@@ -65,6 +65,11 @@
 
                     <div id="chat-messages" class="chat-messages-box"></div>
 
+                    <div id="reply-preview-bar" class="reply-preview hidden">
+                        <span id="reply-preview-text">Replying to...</span>
+                        <button onclick="cancelReplyState()" class="cancel-reply-btn">×</button>
+                    </div>
+
                     <div class="chat-input-row">
                         <input type="text" id="chat-input" placeholder="Message the team...">
                         <button id="chat-send-btn" class="btn primary-btn">Send</button>
@@ -75,6 +80,15 @@
     </div>
 
     <div id="custom-context-menu" class="context-menu hidden">
+        <div class="emoji-reaction-row">
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('❤️')">❤️</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('😊')">😊</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('🔥')">🔥</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('💀')">💀</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('😭')">😭</span>
+        </div>
+        <hr class="menu-divider">
+        <button id="menu-reply-btn">💬 Reply Inline</button>
         <button id="menu-pin-btn">📌 Pin/Unpin Message</button>
         <button id="menu-delete-btn" class="danger-item">🗑️ Delete Message</button>
     </div>
