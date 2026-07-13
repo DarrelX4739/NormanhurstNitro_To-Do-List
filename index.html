@@ -13,18 +13,18 @@
 
     <div id="login-container" class="auth-box">
         <h1>Normanhurst Nitro</h1>
-        <h2>Build Season To-Do List</h2>
+        <h2 id="auth-title">Build Season To-Do List</h2>
         
         <div class="auth-form">
             <input type="email" id="email-input" placeholder="Email Address">
             <input type="password" id="password-input" placeholder="Password">
             
-            <button id="email-login-btn" class="btn primary-btn">Sign In with Email</button>
+            <button id="email-auth-btn" class="btn primary-btn">Sign In with Email</button>
             <button id="google-login-btn" class="btn google-btn">Sign In with Google</button>
             
             <hr>
-            <p class="forgot-text">Forgot your password?</p>
-            <button id="forgot-password-btn" class="btn secondary-btn">Send Reset Email</button>
+            <p id="toggle-auth-text" class="forgot-text">Don't have an account? <a href="#" id="toggle-auth-link">Create one here</a></p>
+            <p id="forgot-password-wrapper" class="forgot-text">Forgot your password? <a href="#" id="forgot-password-btn">Reset it</a></p>
             <p id="auth-message" class="message-text"></p>
         </div>
     </div>
