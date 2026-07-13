@@ -75,6 +75,13 @@ body {
     white-space: pre-wrap;
     display: inline-block;
 }
+.input-wrap input {
+    width: 0;
+    min-width: 100%; 
+}
+.input-wrap input:focus::placeholder {
+    color: transparent;
+}
 .input-wrap input:focus {
     color: var(--text-main);
 }
@@ -142,7 +149,7 @@ input[type="email"], input[type="password"], input[type="text"] {
     outline: none;
 }
 
-/* GLOBAL DARK BUTTON CORRECTIONS */
+/* GLOBAL DARK BUTTON SYSTEM */
 .btn { 
     padding: 10px; 
     border: none; 
