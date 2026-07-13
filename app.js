@@ -26,6 +26,13 @@ const authMessage = document.getElementById("auth-message");
 const robotNameInput = document.getElementById("robot-name-input");
 const sectionsWrapper = document.getElementById("sections-wrapper");
 
+const authTitle = document.getElementById("auth-title");
+const emailAuthBtn = document.getElementById("email-auth-btn");
+const toggleAuthText = document.getElementById("toggle-auth-text");
+const forgotPasswordWrapper = document.getElementById("forgot-password-wrapper");
+
+let isSignUpMode = false;
+
 // ==========================================
 // 2. AUTHENTICATION LOGIC
 // ==========================================
@@ -42,16 +49,34 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Google Sign-In
-document.getElementById("google-login-btn").addEventListener("click", () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch((error) => {
-        authMessage.innerText = error.message;
-    });
-});
+// Setup dynamic toggle listener
+function setupToggleLink() {
+    const link = document.getElementById("toggle-auth-link");
+    if (link) {
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+            isSignUpMode = !isSignUpMode;
+            authMessage.innerText = ""; 
 
-// Email/Password Sign-In
-document.getElementById("email-login-btn").addEventListener("click", () => {
+            if (isSignUpMode) {
+                authTitle.innerText = "Create New Account";
+                emailAuthBtn.innerText = "Sign Up & Register";
+                toggleAuthText.innerHTML = `Already have an account? <a href="#" id="toggle-auth-link">Sign In here</a>`;
+                forgotPasswordWrapper.classList.add("hidden");
+            } else {
+                authTitle.innerText = "Build Season To-Do List";
+                emailAuthBtn.innerText = "Sign In with Email";
+                toggleAuthText.innerHTML = `Don't have an account? <a href="#" id="toggle-auth-link">Create one here</a>`;
+                forgotPasswordWrapper.classList.remove("hidden");
+            }
+            setupToggleLink(); // Rebind event listener to new inner HTML link
+        });
+    }
+}
+setupToggleLink();
+
+// Handle Email Auth (Sign In vs Sign Up)
+emailAuthBtn.addEventListener("click", () => {
     const email = document.getElementById("email-input").value;
     const password = document.getElementById("password-input").value;
     
@@ -60,20 +85,26 @@ document.getElementById("email-login-btn").addEventListener("click", () => {
         return;
     }
 
-    auth.signInWithEmailAndPassword(email, password).catch((error) => {
-        // If account doesn't exist, try creating one automatically
-        if (error.code === 'auth/user-not-found') {
-            auth.createUserWithEmailAndPassword(email, password).catch((err) => {
-                authMessage.innerText = err.message;
-            });
-        } else {
-            authMessage.innerText = error.message;
-        }
+    if (isSignUpMode) {
+        auth.createUserWithEmailAndPassword(email, password)
+            .catch((error) => { authMessage.innerText = error.message; });
+    } else {
+        auth.signInWithEmailAndPassword(email, password)
+            .catch((error) => { authMessage.innerText = error.message; });
+    }
+});
+
+// Google Sign-In
+document.getElementById("google-login-btn").addEventListener("click", () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch((error) => {
+        authMessage.innerText = error.message;
     });
 });
 
-// Password Reset Email (with Spam Warning)
-document.getElementById("forgot-password-btn").addEventListener("click", () => {
+// Password Reset Email
+document.getElementById("forgot-password-btn").addEventListener("click", (e) => {
+    e.preventDefault();
     const email = document.getElementById("email-input").value;
     if (!email) {
         authMessage.innerText = "Please enter your email address above first.";
@@ -95,12 +126,10 @@ document.getElementById("logout-btn").addEventListener("click", () => {
     auth.signOut();
 });
 
-
 // ==========================================
 // 3. UI GENERATION & REAL-TIME SYNC
 // ==========================================
 
-// Build the HTML structure for the 5 categories
 function buildCategoriesUI() {
     sectionsWrapper.innerHTML = "";
     CATEGORIES.forEach(cat => {
@@ -126,14 +155,11 @@ function buildCategoriesUI() {
     });
 }
 
-// Listen for real-time updates from Firestore
-let isUpdatingLocal = false;
 function initializeRealtimeSync() {
     buildCategoriesUI();
 
     DOC_REF.onSnapshot((doc) => {
         if (!doc.exists) {
-            // Initialize document in database if it doesn't exist yet
             const initialData = { robotName: "" };
             CATEGORIES.forEach(cat => initialData[cat] = [{ task: "", completed: false }]);
             DOC_REF.set(initialData);
@@ -142,7 +168,6 @@ function initializeRealtimeSync() {
 
         const data = doc.data();
 
-        // Avoid cursor jumping while typing by checking local focus
         if (document.activeElement !== robotNameInput) {
             robotNameInput.value = data.robotName || "";
         }
@@ -151,11 +176,9 @@ function initializeRealtimeSync() {
             const tbody = document.getElementById(`tbody-${cat}`);
             const rowsData = data[cat] || [];
             
-            // Rebuild rows if length changed or if not currently editing this table
             if (tbody.children.length !== rowsData.length) {
                 renderRows(cat, rowsData);
             } else {
-                // Soft update to keep checkboxes and text in sync across devices
                 rowsData.forEach((row, idx) => {
                     const rowEl = tbody.children[idx];
                     const input = rowEl.querySelector(".task-input");
@@ -229,13 +252,12 @@ window.removeRow = function(category) {
         const data = doc.data();
         const currentList = data[category] || [];
         if (currentList.length > 0) {
-            currentList.pop(); // Removes the bottom row
+            currentList.pop();
             DOC_REF.update({ [category]: currentList });
         }
     });
 };
 
-// Sync Robot Name Changes
 robotNameInput.addEventListener("input", (e) => {
     DOC_REF.update({ robotName: e.target.value });
 });
