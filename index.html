@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Normanhurst Nitro - Build Season To-Do List</title>
+    <title>Normanhurst Nitro - Workspace</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -13,7 +13,7 @@
 
     <div id="login-container" class="auth-box">
         <h1>Normanhurst Nitro</h1>
-        <h2 id="auth-title">Build Season To-Do List</h2>
+        <h2 id="auth-title">Team Workspace</h2>
         
         <div class="auth-form">
             <input type="email" id="email-input" placeholder="Email Address">
@@ -33,13 +33,44 @@
         <header class="top-bar">
             <div class="header-title">
                 <input type="text" id="robot-name-input" placeholder="insert robot name here">
-                <span>to do list</span>
+                <span>Workspace</span>
             </div>
+            
+            <nav class="nav-tabs">
+                <button id="tab-todo-btn" class="tab-btn active" onclick="switchWidget('todo')">To-Do List</button>
+                <button id="tab-chat-btn" class="tab-btn" onclick="switchWidget('chat')">
+                    Chat <span id="chat-badge" class="notification-badge hidden"></span>
+                </button>
+            </nav>
+
             <button id="logout-btn" class="btn danger-btn">Log Out</button>
         </header>
 
-        <main class="categories-grid">
-            <div id="sections-wrapper"></div>
+        <main class="app-viewport">
+            <div id="widget-todo" class="widget-content">
+                <div id="sections-wrapper" class="categories-grid"></div>
+            </div>
+
+            <div id="widget-chat" class="widget-content hidden">
+                <div class="chat-window">
+                    <div class="chat-header">
+                        <h3>Team Feed</h3>
+                        <button id="pins-toggle-btn" class="btn secondary-btn" onclick="togglePinsView()">📌 Pins</button>
+                    </div>
+
+                    <div id="pinned-messages-drawer" class="pinned-drawer hidden">
+                        <h4>Pinned Messages</h4>
+                        <div id="pinned-list"></div>
+                    </div>
+
+                    <div id="chat-messages" class="chat-messages-box"></div>
+
+                    <div class="chat-input-row">
+                        <input type="text" id="chat-input" placeholder="Message the team...">
+                        <button id="chat-send-btn" class="btn primary-btn">Send</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
