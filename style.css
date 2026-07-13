@@ -8,6 +8,7 @@
     --text-main: #ffffff;
     --text-muted: #aaaaaa;
     --border-color: #333333;
+    --accent-gold: #ffb300;
 }
 
 * {
@@ -145,6 +146,27 @@ body {
     display: inline-block;
 }
 
+/* HIGH-VISIBILITY ANNOUNCEMENT BANNER CSS */
+.announcement-banner {
+    background-color: var(--accent-gold);
+    color: #121212;
+    padding: 12px 40px;
+    font-weight: bold;
+    text-align: center;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    border-bottom: 2px solid #c78b00;
+    animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 100%;
+    z-index: 99;
+    box-sizing: border-box;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
 /* AUTH BOARDS */
 .auth-box {
     max-width: 400px;
@@ -243,7 +265,7 @@ td { padding: 8px; }
 .row-delete-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; }
 .row-delete-btn:hover { color: var(--accent-red); }
 
-/* TASK CREATOR FORM (FIXED FOR TYPING FOCUS) */
+/* TASK CREATOR FORM */
 .task-creator-row { display: flex; gap: 8px; margin-top: auto; }
 .task-creator-row input { flex: 1; font-size: 0.9rem; }
 .task-creator-row button { padding: 8px 14px; font-size: 0.85rem; flex-shrink: 0; }
