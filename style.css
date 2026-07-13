@@ -326,6 +326,44 @@ td { padding: 8px; }
     gap: 10px;
 }
 
+/* CUSTOM CONTEXT MENU STYLES */
+.context-menu {
+    position: absolute;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    padding: 5px 0;
+    min-width: 160px;
+}
+
+.context-menu button {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    padding: 10px 15px;
+    text-align: left;
+    font-size: 0.9rem;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+}
+
+.context-menu button:hover {
+    background-color: var(--bg-input);
+}
+
+.context-menu button.danger-item {
+    color: #ff8080;
+}
+
+.context-menu button.danger-item:hover {
+    background-color: rgba(211, 47, 47, 0.2);
+}
+
 /* MOBILE RESPONSIVENESS */
 @media (max-width: 600px) {
     .top-bar { padding: 10px 15px; flex-direction: column; align-items: stretch; }
