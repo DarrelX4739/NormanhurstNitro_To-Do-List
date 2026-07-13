@@ -32,43 +32,45 @@ body {
 /* NAVBAR & TABS */
 .top-bar {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start; /* Aligns all items cleanly from the left side */
     align-items: center;
     padding: 15px 40px;
     background-color: var(--bg-card);
     border-bottom: 2px solid var(--accent-red);
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 30px; /* Generous separation gap between header components */
 }
 
 .header-title {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     font-size: 1.3rem;
     font-weight: bold;
     text-transform: uppercase;
-    flex: 1;
-    min-width: 0;
+    flex: 0 1 auto; /* Stops the box from growing out of control or breaking alignment */
+    min-width: max-content; /* Guarantees layout boundaries stay broad enough for contents */
 }
 
-/* Critical Layout Fix: Prevents the word "Workspace" from being squished or covered */
+/* Structural Anchor: Stops "Workspace" from shifting left or getting covered */
 .header-static-text {
     flex-shrink: 0;
     white-space: nowrap;
+    display: inline-block;
 }
 
-/* Dynamic Text Track Input - Scalable & Responsive */
+/* Dynamic Text Track Input - Shrinks and Expands Safely */
 .input-wrap {
     display: inline-grid;
     align-items: center;
     position: relative;
     border-bottom: 2px dashed var(--accent-red);
-    min-width: 10px;
-    /* Viewport Safety Barrier: Stops expanding before hitting structural neighbors */
+    min-width: 30px; /* Gives short names like 'hi' or single letters perfect safety margins */
     max-width: min(400px, 45vw); 
     overflow: hidden;
+    flex-shrink: 0;
 }
+
 .input-wrap::after, .input-wrap input {
     grid-area: 1/1;
     font-size: 1.3rem;
@@ -79,26 +81,32 @@ body {
     border: none;
     outline: none;
 }
+
 .input-wrap::after {
     content: attr(data-value);
     visibility: hidden;
     white-space: pre;
     display: inline-block;
 }
-/* Default template fallback sizing logic */
+
+/* Default placeholder alignment template size */
 .input-wrap[data-value=""]::after {
     content: "insert robot name here";
 }
+
 .input-wrap input {
     width: 100%;
     min-width: 0;
 }
+
 .input-wrap input:focus::placeholder {
     color: transparent;
 }
+
 .input-wrap input:focus {
     color: var(--text-main);
 }
+
 .input-wrap:has(input:focus) {
     border-bottom: 2px solid var(--accent-red);
 }
@@ -107,6 +115,7 @@ body {
     display: flex;
     gap: 10px;
     flex-shrink: 0;
+    margin-left: auto; /* Pushes tabs and logout gracefully toward the right edge */
 }
 
 .tab-btn {
@@ -416,8 +425,8 @@ td { padding: 8px; }
 
 /* MOBILE BREAKS */
 @media (max-width: 600px) {
-    .top-bar { padding: 10px 15px; flex-direction: column; align-items: stretch; }
-    .nav-tabs { justify-content: space-around; }
+    .top-bar { padding: 10px 15px; flex-direction: column; align-items: stretch; gap: 15px; }
+    .nav-tabs { justify-content: space-around; margin-left: 0; }
     .chat-window { height: calc(100vh - 190px); padding: 10px; }
     .message-wrapper { max-width: 90%; }
 }
