@@ -50,13 +50,12 @@ body {
     text-transform: uppercase;
 }
 
-/* Dynamic Moving Border Text Track Input - Form Fitted & Fully Shrinkable */
+/* Dynamic Text Track Input - Shrinks cleanly past placeholder limitations */
 .input-wrap {
     display: inline-grid;
     align-items: center;
     position: relative;
     border-bottom: 2px dashed var(--accent-red);
-    min-width: 10px;
 }
 .input-wrap::after, .input-wrap input {
     grid-area: 1/1;
@@ -70,14 +69,18 @@ body {
     width: 100%;
 }
 .input-wrap::after {
-    content: attr(data-value) ' ';
+    content: attr(data-value);
     visibility: hidden;
-    white-space: pre-wrap;
+    white-space: pre;
     display: inline-block;
 }
+/* When entirely empty, size the track line to the placeholder text width */
+.input-wrap[data-value=""]::after {
+    content: "insert robot name here";
+}
 .input-wrap input {
-    width: 0;
-    min-width: 100%; 
+    width: 100%;
+    min-width: 0; /* Unlocks the ability to collapse completely to character widths */
 }
 .input-wrap input:focus::placeholder {
     color: transparent;
