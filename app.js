@@ -26,6 +26,9 @@ let lastReadTimestamp = 0;
 let highestMessageTimestamp = 0;
 let pressTimer = null;
 
+// Thread Reply Active States
+let activeReplyTarget = null; 
+
 // DOM Selectors
 const loginContainer = document.getElementById("login-container");
 const appContainer = document.getElementById("app-container");
@@ -40,11 +43,17 @@ const pinnedDrawer = document.getElementById("pinned-messages-drawer");
 const pinnedList = document.getElementById("pinned-list");
 
 const contextMenu = document.getElementById("custom-context-menu");
+const menuReplyBtn = document.getElementById("menu-reply-btn");
 const menuPinBtn = document.getElementById("menu-pin-btn");
 const menuDeleteBtn = document.getElementById("menu-delete-btn");
+const replyPreviewBar = document.getElementById("reply-preview-bar");
+const replyPreviewText = document.getElementById("reply-preview-text");
+
+let activeSelectedMsgId = null;
+let activeSelectedMsgData = null;
 
 // ==========================================
-// 2. AUTH REGISTRATION AND ROUTING HOOKS
+// 2. AUTH ROUTING HOOKS
 // ==========================================
 
 auth.onAuthStateChanged((user) => {
@@ -177,7 +186,7 @@ window.removeTodoRow = function(cat, rowId) {
 };
 
 // ==========================================
-// 4. REAL-TIME MULTIFUNCTIONAL CHAT ENGINE
+// 4. REAL-TIME CHAT ENGINE (WITH EXTENSIONS)
 // ==========================================
 
 function initializeChatSync() {
@@ -220,20 +229,50 @@ function renderChatMessage(msgId, msg) {
     const wrapper = document.createElement("div");
     wrapper.className = `message-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}`;
     
-    const reactions = msg.reactions || [];
-    const comments = msg.comments || [];
-    
-    let reactionsHTML = reactions.map((r) => `<span class="reaction-chip" onclick="addReaction('${msgId}', '${r.emoji}')">${r.emoji} ${r.count}</span>`).join("");
-    let commentsHTML = comments.map(c => `<div class="comment-line"><span class="comment-author">${c.author.split('@')[0]}</span>: ${escapeHTML(c.text)}</div>`).join("");
+    // Read the reaction map counts dynamically
+    const reactionMap = msg.reactionsMap || {};
+    const emojiCounts = { '❤️': 0, '😊': 0, '🔥': 0, '💀': 0, '😭': 0 };
+    let hasUserReactedToAny = false;
+
+    Object.keys(reactionMap).forEach(user => {
+        const chosenEmoji = reactionMap[user];
+        if (emojiCounts[chosenEmoji] !== undefined) {
+            emojiCounts[chosenEmoji]++;
+        }
+        if (user === currentUserEmail) hasUserReactedToAny = true;
+    });
+
+    let reactionsHTML = "";
+    Object.keys(emojiCounts).forEach(emoji => {
+        if (emojiCounts[emoji] > 0) {
+            const userReactedToThisOne = reactionMap[currentUserEmail] === emoji;
+            reactionsHTML += `
+                <span class="reaction-chip ${userReactedToThisOne ? 'user-reacted' : ''}" 
+                      onclick="toggleReactionDirectly('${msgId}', '${emoji}')">
+                    ${emoji} ${emojiCounts[emoji]}
+                </span>`;
+        }
+    });
+
+    // Check for nested parent message replies
+    let replyHTML = "";
+    if (msg.replyTo) {
+        replyHTML = `
+            <div class="inline-reply-box">
+                <span class="reply-sender-label">↩ ${msg.replyTo.sender.split('@')[0]}</span> 
+                ${escapeHTML(msg.replyTo.text)}
+            </div>
+        `;
+    }
 
     wrapper.innerHTML = `
         <div class="msg-meta">${msg.sender} ${msg.pinned ? '📌' : ''}</div>
+        ${replyHTML}
         <div class="msg-bubble" id="bubble-${msgId}">
             ${escapeHTML(msg.text)}
         </div>
         <div class="msg-addons">
-            <div class="reactions-row">${reactionsHTML} <span class="reaction-chip" onclick="promptReaction('${msgId}')">+ React</span> <span class="reaction-chip" onclick="promptComment('${msgId}')">💬 Reply</span></div>
-            <div class="comments-box ${comments.length === 0 ? 'hidden' : ''}">${commentsHTML}</div>
+            <div class="reactions-row">${reactionsHTML}</div>
         </div>
     `;
 
@@ -241,17 +280,15 @@ function renderChatMessage(msgId, msg) {
 
     const bubbleElement = document.getElementById(`bubble-${msgId}`);
     
-    // Desktop Right-Click UI Trigger
     bubbleElement.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        openMessageMenu(msgId, isOutgoing, msg.pinned, e.clientX, e.clientY);
+        openMessageMenu(msgId, msg, isOutgoing, msg.pinned, e.clientX, e.clientY);
     });
 
-    // Mobile Long Press UI Trigger
     bubbleElement.addEventListener("touchstart", (e) => {
         pressTimer = setTimeout(() => {
             const touch = e.touches[0];
-            openMessageMenu(msgId, isOutgoing, msg.pinned, touch.clientX, touch.clientY);
+            openMessageMenu(msgId, msg, isOutgoing, msg.pinned, touch.clientX, touch.clientY);
         }, 600);
     });
     
@@ -265,11 +302,22 @@ function renderPinnedMessage(msgId, msg) {
     pinnedList.appendChild(item);
 }
 
-// Custom Context Menu Overlay Engine
-function openMessageMenu(msgId, isOwner, isPinned, clientX, clientY) {
+// ==========================================
+// 5. CUSTOM CONTEXT MENU & REACTIONS
+// ==========================================
+
+function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
+    activeSelectedMsgId = msgId;
+    activeSelectedMsgData = msgData;
+
     contextMenu.style.left = `${clientX}px`;
     contextMenu.style.top = `${clientY}px`;
     contextMenu.classList.remove("hidden");
+
+    menuReplyBtn.onclick = () => {
+        setupReplyState(msgId, msgData);
+        closeCustomMenu();
+    };
 
     menuPinBtn.onclick = () => {
         CHAT_REF.doc(msgId).update({ pinned: !isPinned });
@@ -279,9 +327,7 @@ function openMessageMenu(msgId, isOwner, isPinned, clientX, clientY) {
     if (isOwner) {
         menuDeleteBtn.classList.remove("hidden");
         menuDeleteBtn.onclick = () => {
-            if (confirm("Delete this message?")) {
-                CHAT_REF.doc(msgId).delete();
-            }
+            if (confirm("Delete this message?")) CHAT_REF.doc(msgId).delete();
             closeCustomMenu();
         };
     } else {
@@ -294,13 +340,54 @@ function closeCustomMenu() {
 }
 
 document.addEventListener("click", (e) => {
-    if (!contextMenu.contains(e.target)) {
-        closeCustomMenu();
-    }
+    if (!contextMenu.contains(e.target)) closeCustomMenu();
 });
 
+// Single Reaction Per Message Implementation
+window.handleMenuReaction = function(emoji) {
+    if (!activeSelectedMsgId) return;
+    toggleReactionDirectly(activeSelectedMsgId, emoji);
+    closeCustomMenu();
+};
+
+window.toggleReactionDirectly = function(msgId, emoji) {
+    CHAT_REF.doc(msgId).get().then(doc => {
+        if (!doc.exists) return;
+        const data = doc.data();
+        let map = data.reactionsMap || {};
+
+        if (map[currentUserEmail] === emoji) {
+            delete map[currentUserEmail]; // Remove if clicked identical emoji again
+        } else {
+            map[currentUserEmail] = emoji; // Assign or overwrite existing single option choice
+        }
+
+        CHAT_REF.doc(msgId).update({ reactionsMap: map });
+    });
+};
+
 // ==========================================
-// 5. CHAT ENGAGEMENT ADD-ON ACTIONS
+// 6. REPLY HANDLING STATES
+// ==========================================
+
+function setupReplyState(msgId, msgData) {
+    activeReplyTarget = {
+        id: msgId,
+        sender: msgData.sender,
+        text: msgData.text
+    };
+    replyPreviewText.innerHTML = `Replying to <strong>${msgData.sender.split('@')[0]}</strong>: "<em>${escapeHTML(msgData.text)}</em>"`;
+    replyPreviewBar.classList.remove("hidden");
+    chatInput.focus();
+}
+
+window.cancelReplyState = function() {
+    activeReplyTarget = null;
+    replyPreviewBar.classList.add("hidden");
+};
+
+// ==========================================
+// 7. MESSAGE DISPATCH TRANSMISSION
 // ==========================================
 
 function sendMsg() {
@@ -308,53 +395,25 @@ function sendMsg() {
     if (!text) return;
     chatInput.value = "";
 
-    CHAT_REF.add({
+    const payload = {
         text: text,
         sender: currentUserEmail,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         pinned: false,
-        reactions: [],
-        comments: []
-    });
+        reactionsMap: {}
+    };
+
+    if (activeReplyTarget) {
+        payload.replyTo = activeReplyTarget;
+    }
+
+    CHAT_REF.add(payload)
+        .then(() => { cancelReplyState(); })
+        .catch(err => console.error("Message error: ", err));
 }
 
 chatSendBtn.addEventListener("click", sendMsg);
 chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMsg(); });
-
-window.promptReaction = function(msgId) {
-    const emoji = prompt("Enter an emoji to react (e.g., 👍, 🔥, 👀):");
-    if (emoji) addReaction(msgId, emoji.trim());
-};
-
-window.addReaction = function(msgId, emoji) {
-    CHAT_REF.doc(msgId).get().then(doc => {
-        if (!doc.exists) return;
-        let reactions = doc.data().reactions || [];
-        const idx = reactions.findIndex(r => r.emoji === emoji);
-        
-        if (idx !== -1) {
-            reactions[idx].count += 1;
-        } else {
-            reactions.push({ emoji: emoji, count: 1 });
-        }
-        CHAT_REF.doc(msgId).update({ reactions: reactions });
-    });
-};
-
-window.promptComment = function(msgId) {
-    const txt = prompt("Write a reply to this message:");
-    if (!txt || !txt.trim()) return;
-    
-    CHAT_REF.doc(msgId).get().then(doc => {
-        if (!doc.exists) return;
-        let comments = doc.data().comments || [];
-        comments.push({
-            author: currentUserEmail,
-            text: txt.trim()
-        });
-        CHAT_REF.doc(msgId).update({ comments: comments });
-    });
-};
 
 function escapeHTML(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
