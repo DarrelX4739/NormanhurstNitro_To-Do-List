@@ -37,7 +37,6 @@ let isSignUpMode = false;
 // 2. AUTHENTICATION LOGIC
 // ==========================================
 
-// Track Auth State
 auth.onAuthStateChanged((user) => {
     if (user) {
         loginContainer.classList.add("hidden");
@@ -49,7 +48,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Setup dynamic toggle listener
 function setupToggleLink() {
     const link = document.getElementById("toggle-auth-link");
     if (link) {
@@ -69,13 +67,12 @@ function setupToggleLink() {
                 toggleAuthText.innerHTML = `Don't have an account? <a href="#" id="toggle-auth-link">Create one here</a>`;
                 forgotPasswordWrapper.classList.remove("hidden");
             }
-            setupToggleLink(); // Rebind event listener to new inner HTML link
+            setupToggleLink(); 
         });
     }
 }
 setupToggleLink();
 
-// Handle Email Auth (Sign In vs Sign Up + Database Logging)
 emailAuthBtn.addEventListener("click", () => {
     const email = document.getElementById("email-input").value;
     const password = document.getElementById("password-input").value;
@@ -86,28 +83,20 @@ emailAuthBtn.addEventListener("click", () => {
     }
 
     if (isSignUpMode) {
-        // 1. Creates the account in Firebase Authentication
         auth.createUserWithEmailAndPassword(email, password)
             .then((userCredential) => {
-                // 2. Automatically creates a record of them in your Firestore Database
                 return db.collection("users").doc(userCredential.user.uid).set({
                     email: email,
                     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             })
-            .catch((error) => { 
-                authMessage.innerText = error.message; 
-            });
+            .catch((error) => { authMessage.innerText = error.message; });
     } else {
-        // Normal Sign In
         auth.signInWithEmailAndPassword(email, password)
-            .catch((error) => { 
-                authMessage.innerText = error.message; 
-            });
+            .catch((error) => { authMessage.innerText = error.message; });
     }
 });
 
-// Google Sign-In
 document.getElementById("google-login-btn").addEventListener("click", () => {
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).catch((error) => {
@@ -115,7 +104,6 @@ document.getElementById("google-login-btn").addEventListener("click", () => {
     });
 });
 
-// Password Reset Email
 document.getElementById("forgot-password-btn").addEventListener("click", (e) => {
     e.preventDefault();
     const email = document.getElementById("email-input").value;
@@ -134,10 +122,21 @@ document.getElementById("forgot-password-btn").addEventListener("click", (e) => 
         });
 });
 
-// Log Out
 document.getElementById("logout-btn").addEventListener("click", () => {
     auth.signOut();
 });
+
+function resizeRobotInput() {
+    const tempSpan = document.createElement("span");
+    tempSpan.style.font = window.getComputedStyle(robotNameInput).font;
+    tempSpan.style.visibility = "hidden";
+    tempSpan.style.position = "absolute";
+    tempSpan.style.whiteSpace = "pre";
+    tempSpan.innerText = robotNameInput.value || robotNameInput.placeholder;
+    document.body.appendChild(tempSpan);
+    robotNameInput.style.width = (tempSpan.getBoundingClientRect().width + 12) + "px";
+    document.body.removeChild(tempSpan);
+}
 
 // ==========================================
 // 3. UI GENERATION & REAL-TIME SYNC
@@ -183,6 +182,7 @@ function initializeRealtimeSync() {
 
         if (document.activeElement !== robotNameInput) {
             robotNameInput.value = data.robotName || "";
+            resizeRobotInput();
         }
 
         CATEGORIES.forEach(cat => {
@@ -241,22 +241,40 @@ function renderRows(category, rowsData) {
 // ==========================================
 
 window.updateData = function(category, index, field, value) {
+    if (field === 'completed') {
+        const tbody = document.getElementById(`tbody-${category}`);
+        if (tbody && tbody.children[index]) {
+            if (value) {
+                tbody.children[index].classList.add("completed");
+            } else {
+                tbody.children[index].classList.remove("completed");
+            }
+        }
+    }
+
     DOC_REF.get().then((doc) => {
         if (!doc.exists) return;
         const data = doc.data();
-        data[category][index][field] = value;
-        DOC_REF.update({ [category]: data[category] });
+        if(data[category] && data[category][index]) {
+            data[category][index][field] = value;
+            DOC_REF.update({ [category]: data[category] });
+        }
     });
 };
 
 window.addRow = function(category) {
-    DOC_REF.get().then((doc) => {
-        if (!doc.exists) return;
-        const data = doc.data();
-        const currentList = data[category] || [];
-        currentList.push({ task: "", completed: false });
-        DOC_REF.update({ [category]: currentList });
-    });
+    const newRow = { task: "", completed: false };
+    const tbody = document.getElementById(`tbody-${category}`);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+        <td><input type="text" class="task-input" placeholder="Insert task" value=""></td>
+        <td class="status-col"><input type="checkbox" class="task-checkbox"></td>
+    `;
+    tbody.appendChild(tr);
+
+    DOC_REF.update({
+        [category]: firebase.firestore.FieldValue.arrayUnion(newRow)
+    }).catch(err => { console.error("Error adding row: ", err); });
 };
 
 window.removeRow = function(category) {
@@ -264,7 +282,11 @@ window.removeRow = function(category) {
         if (!doc.exists) return;
         const data = doc.data();
         const currentList = data[category] || [];
+        
         if (currentList.length > 0) {
+            const tbody = document.getElementById(`tbody-${category}`);
+            if (tbody.lastChild) tbody.removeChild(tbody.lastChild);
+
             currentList.pop();
             DOC_REF.update({ [category]: currentList });
         }
@@ -272,5 +294,6 @@ window.removeRow = function(category) {
 };
 
 robotNameInput.addEventListener("input", (e) => {
+    resizeRobotInput();
     DOC_REF.update({ robotName: e.target.value });
 });
