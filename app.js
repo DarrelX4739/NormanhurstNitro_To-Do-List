@@ -14,19 +14,15 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Pointers
 const CATEGORIES = ["Design", "Mechanical", "Electrical", "Software", "Media"];
 const TODO_REF = db.collection("nitro_todo").doc("season_2026");
 const CHAT_REF = db.collection("nitro_workspace_chat");
 
-// State Global Tracking Variables
 let currentUserEmail = "";
 let currentWidget = "todo";
 let lastReadTimestamp = 0;
 let highestMessageTimestamp = 0;
 let pressTimer = null;
-
-// Thread Reply Active States
 let activeReplyTarget = null; 
 
 // DOM Selectors
@@ -56,7 +52,6 @@ let activeSelectedMsgData = null;
 // ==========================================
 // 2. AUTH ROUTING HOOKS
 // ==========================================
-
 auth.onAuthStateChanged((user) => {
     if (user) {
         currentUserEmail = user.email || "unknown@team.com";
@@ -114,9 +109,8 @@ document.getElementById("email-auth-btn").addEventListener("click", () => {
 document.getElementById("logout-btn").addEventListener("click", () => auth.signOut());
 
 // ==========================================
-// 3. TO-DO BOARD SYNC ENGINE
+// 3. TO-DO BOARD SYNC ENGINE (FOCUS FIXED)
 // ==========================================
-
 function buildTodoUI() {
     sectionsWrapper.innerHTML = "";
     CATEGORIES.forEach(cat => {
@@ -128,9 +122,22 @@ function buildTodoUI() {
                 <thead><tr><th>Task</th><th class="status-col">Status</th><th class="action-col"></th></tr></thead>
                 <tbody id="tbody-${cat}"></tbody>
             </table>
-            <div class="table-actions"><button class="btn secondary-btn" onclick="addTodoRow('${cat}')">+ Add Task Row</button></div>
+            <div class="task-creator-row">
+                <input type="text" id="new-task-${cat}" placeholder="Add a new ${cat.toLowerCase()} task..." autocomplete="off">
+                <button class="btn secondary-btn" onclick="addNewTask('${cat}')">+ Add</button>
+            </div>
         `;
         sectionsWrapper.appendChild(div);
+        
+        // Support pressing Enter inside the new task input
+        setTimeout(() => {
+            const inputEl = document.getElementById(`new-task-${cat}`);
+            if (inputEl) {
+                inputEl.addEventListener("keypress", (e) => {
+                    if (e.key === "Enter") addNewTask(cat);
+                });
+            }
+        }, 0);
     });
 }
 
@@ -144,31 +151,63 @@ function initializeTodoSync() {
             robotWrap.setAttribute('data-value', data.robotName || "");
             triggerFailSafeWidth();
         }
+        
         CATEGORIES.forEach(cat => {
             const tbody = document.getElementById(`tbody-${cat}`);
             const rows = data[cat] || [];
+            
+            // Check which element currently has focus so we don't disrupt typing inside existing rows
+            const activeEl = document.activeElement;
+            const activeRowId = activeEl && activeEl.dataset ? activeEl.dataset.rowId : null;
+            
             tbody.innerHTML = "";
             rows.forEach((row) => {
                 const tr = document.createElement("tr");
                 if (row.completed) tr.classList.add("completed");
                 tr.innerHTML = `
-                    <td><input type="text" class="task-input" value="${row.task}" oninput="updateTodoData('${cat}', '${row.id}', 'task', this.value)"></td>
+                    <td>
+                        <input type="text" class="task-input" data-row-id="${row.id}" 
+                               value="${escapeHTML(row.task)}" placeholder="Task description..."
+                               onblur="updateTodoData('${cat}', '${row.id}', 'task', this.value)"
+                               onkeydown="if(event.key === 'Enter') this.blur()">
+                    </td>
                     <td class="status-col"><input type="checkbox" class="task-checkbox" ${row.completed ? "checked" : ""} onchange="updateTodoData('${cat}', '${row.id}', 'completed', this.checked)"></td>
                     <td class="action-col"><button class="row-delete-btn" onclick="removeTodoRow('${cat}', '${row.id}')">×</button></td>
                 `;
                 tbody.appendChild(tr);
             });
+            
+            // Restore focus if the user was editing an existing row when the database synced
+            if (activeRowId) {
+                const restoredInput = tbody.querySelector(`input[data-row-id="${activeRowId}"]`);
+                if (restoredInput) {
+                    restoredInput.focus();
+                    restoredInput.selectionStart = restoredInput.selectionEnd = restoredInput.value.length;
+                }
+            }
         });
     });
 }
 
-robotNameInput.addEventListener("change", (e) => {
+robotNameInput.addEventListener("input", (e) => {
     TODO_REF.update({ robotName: e.target.value.trim() });
+    triggerFailSafeWidth();
 });
 
-window.addTodoRow = function(cat) {
+// Added Function: Creates task from the dedicated input without focus loss
+window.addNewTask = function(cat) {
+    const inputEl = document.getElementById(`new-task-${cat}`);
+    if (!inputEl) return;
+    const taskText = inputEl.value.trim();
+    if (!taskText) return;
+
     const rowId = "row-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
-    TODO_REF.update({ [cat]: firebase.firestore.FieldValue.arrayUnion({ id: rowId, task: "", completed: false }) });
+    TODO_REF.update({ 
+        [cat]: firebase.firestore.FieldValue.arrayUnion({ id: rowId, task: taskText, completed: false }) 
+    }).then(() => {
+        inputEl.value = "";
+        inputEl.focus(); // Keeps your cursor in the box!
+    });
 };
 
 window.updateTodoData = function(cat, rowId, field, val) {
@@ -177,8 +216,10 @@ window.updateTodoData = function(cat, rowId, field, val) {
         const list = doc.data()[cat] || [];
         const idx = list.findIndex(item => item.id === rowId);
         if (idx !== -1) {
-            list[idx][field] = val;
-            TODO_REF.update({ [cat]: list });
+            if (list[idx][field] !== val) {
+                list[idx][field] = val;
+                TODO_REF.update({ [cat]: list });
+            }
         }
     });
 };
@@ -195,7 +236,6 @@ window.removeTodoRow = function(cat, rowId) {
 // ==========================================
 // 4. REAL-TIME CHAT ENGINE
 // ==========================================
-
 function initializeChatSync() {
     CHAT_REF.orderBy("timestamp", "asc").onSnapshot((snapshot) => {
         chatMessages.innerHTML = "";
@@ -306,9 +346,8 @@ function renderPinnedMessage(msgId, msg) {
 }
 
 // ==========================================
-// 5. BOUNDED CONTEXT MENU INTERCEPTOR
+// 5. CONTEXT MENU & REACTIONS
 // ==========================================
-
 function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     activeSelectedMsgId = msgId;
     activeSelectedMsgData = msgData;
@@ -323,19 +362,10 @@ function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     let targetLeft = clientX;
     let targetTop = clientY;
 
-    // Enforce viewport bounding rules - forces container indentation
-    if (targetLeft + menuWidth > containerRect.right) {
-        targetLeft = containerRect.right - menuWidth - 12;
-    }
-    if (targetLeft < containerRect.left) {
-        targetLeft = containerRect.left + 12;
-    }
-    if (targetTop + menuHeight > containerRect.bottom) {
-        targetTop = containerRect.bottom - menuHeight - 12;
-    }
-    if (targetTop < containerRect.top) {
-        targetTop = containerRect.top + 12;
-    }
+    if (targetLeft + menuWidth > containerRect.right) targetLeft = containerRect.right - menuWidth - 12;
+    if (targetLeft < containerRect.left) targetLeft = containerRect.left + 12;
+    if (targetTop + menuHeight > containerRect.bottom) targetTop = containerRect.bottom - menuHeight - 12;
+    if (targetTop < containerRect.top) targetTop = containerRect.top + 12;
 
     contextMenu.style.left = `${targetLeft + window.scrollX}px`;
     contextMenu.style.top = `${targetTop + window.scrollY}px`;
@@ -394,7 +424,6 @@ window.toggleReactionDirectly = function(msgId, emoji) {
 // ==========================================
 // 6. REPLY HANDLING STATES
 // ==========================================
-
 function setupReplyState(msgId, msgData) {
     activeReplyTarget = {
         id: msgId,
@@ -414,7 +443,6 @@ window.cancelReplyState = function() {
 // ==========================================
 // 7. MESSAGE DISPATCH TRANSMISSION
 // ==========================================
-
 function sendMsg() {
     const text = chatInput.value.trim();
     if (!text) return;
@@ -441,11 +469,12 @@ chatSendBtn.addEventListener("click", sendMsg);
 chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMsg(); });
 
 function escapeHTML(str) {
+    if (!str) return "";
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // ==========================================
-// 8. UNCONDITIONAL SHRINKING FAIL-SAFE ENGINE
+// 8. FAIL-SAFE WIDTH ENGINE
 // ==========================================
 function triggerFailSafeWidth() {
     if (robotNameInput && robotWrap) {
