@@ -140,7 +140,7 @@ function initializeTodoSync() {
         const data = doc.data();
         if (document.activeElement !== robotNameInput) {
             robotNameInput.value = data.robotName || "";
-            // Keep CSS moving-border sizing variable accurate to data values
+            // Updates exact dynamic-fitted sizing attributes seamlessly
             robotNameInput.parentNode.dataset.value = data.robotName || "";
         }
         CATEGORIES.forEach(cat => {
@@ -161,7 +161,6 @@ function initializeTodoSync() {
     });
 }
 
-// Add header update handler hook
 robotNameInput.addEventListener("change", (e) => {
     TODO_REF.update({ robotName: e.target.value.trim() });
 });
@@ -347,7 +346,6 @@ document.addEventListener("click", (e) => {
     if (!contextMenu.contains(e.target)) closeCustomMenu();
 });
 
-// Menu reaction wrapper link
 window.handleMenuReaction = function(emoji) {
     if (!activeSelectedMsgId) return;
     toggleReactionDirectly(activeSelectedMsgId, emoji);
