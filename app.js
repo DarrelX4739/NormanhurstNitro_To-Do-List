@@ -140,7 +140,6 @@ function initializeTodoSync() {
         const data = doc.data();
         if (document.activeElement !== robotNameInput) {
             robotNameInput.value = data.robotName || "";
-            // Updates exact dynamic-fitted sizing attributes seamlessly
             robotNameInput.parentNode.dataset.value = data.robotName || "";
         }
         CATEGORIES.forEach(cat => {
@@ -235,7 +234,6 @@ function renderChatMessage(msgId, msg) {
     const wrapper = document.createElement("div");
     wrapper.className = `message-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}`;
     
-    // Process real-time reaction counts dynamically from map schema
     const reactionMap = msg.reactionsMap || {};
     const emojiCounts = { '❤️': 0, '😊': 0, '🔥': 0, '💀': 0, '😭': 0 };
 
@@ -306,16 +304,42 @@ function renderPinnedMessage(msgId, msg) {
 }
 
 // ==========================================
-// 5. CUSTOM CONTEXT MENU & REACTIONS
+// 5. CUSTOM CONTEXT MENU & BOUNDING ENFORCER
 // ==========================================
 
 function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     activeSelectedMsgId = msgId;
     activeSelectedMsgData = msgData;
 
-    contextMenu.style.left = `${clientX}px`;
-    contextMenu.style.top = `${clientY}px`;
+    // Unhide first so the browser geometry calculates dimensions accurately
     contextMenu.classList.remove("hidden");
+
+    const chatMessagesBox = document.getElementById("chat-messages");
+    const containerRect = chatMessagesBox.getBoundingClientRect();
+    
+    const menuRect = contextMenu.getBoundingClientRect();
+    const menuWidth = menuRect.width || 180;
+    const menuHeight = menuRect.height || 220;
+
+    let targetLeft = clientX;
+    let targetTop = clientY;
+
+    // Boundary containment checks - indents inward to avoid text clipping
+    if (targetLeft + menuWidth > containerRect.right) {
+        targetLeft = containerRect.right - menuWidth - 12;
+    }
+    if (targetLeft < containerRect.left) {
+        targetLeft = containerRect.left + 12;
+    }
+    if (targetTop + menuHeight > containerRect.bottom) {
+        targetTop = containerRect.bottom - menuHeight - 12;
+    }
+    if (targetTop < containerRect.top) {
+        targetTop = containerRect.top + 12;
+    }
+
+    contextMenu.style.left = `${targetLeft + window.scrollX}px`;
+    contextMenu.style.top = `${targetTop + window.scrollY}px`;
 
     menuReplyBtn.onclick = () => {
         setupReplyState(msgId, msgData);
