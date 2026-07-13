@@ -32,13 +32,13 @@ body {
 /* NAVBAR & TABS */
 .top-bar {
     display: flex;
-    justify-content: flex-start; /* Aligns all items cleanly from the left side */
+    justify-content: flex-start;
     align-items: center;
     padding: 15px 40px;
     background-color: var(--bg-card);
     border-bottom: 2px solid var(--accent-red);
     flex-wrap: wrap;
-    gap: 30px; /* Generous separation gap between header components */
+    gap: 30px;
 }
 
 .header-title {
@@ -48,11 +48,10 @@ body {
     font-size: 1.3rem;
     font-weight: bold;
     text-transform: uppercase;
-    flex: 0 1 auto; /* Stops the box from growing out of control or breaking alignment */
-    min-width: max-content; /* Guarantees layout boundaries stay broad enough for contents */
+    flex: 0 1 auto;
+    min-width: max-content;
 }
 
-/* Structural Anchor: Stops "Workspace" from shifting left or getting covered */
 .header-static-text {
     flex-shrink: 0;
     white-space: nowrap;
@@ -65,7 +64,7 @@ body {
     align-items: center;
     position: relative;
     border-bottom: 2px dashed var(--accent-red);
-    min-width: 30px; /* Gives short names like 'hi' or single letters perfect safety margins */
+    min-width: 30px;
     max-width: min(400px, 45vw); 
     overflow: hidden;
     flex-shrink: 0;
@@ -89,7 +88,6 @@ body {
     display: inline-block;
 }
 
-/* Default placeholder alignment template size */
 .input-wrap[data-value=""]::after {
     content: "insert robot name here";
 }
@@ -115,7 +113,7 @@ body {
     display: flex;
     gap: 10px;
     flex-shrink: 0;
-    margin-left: auto; /* Pushes tabs and logout gracefully toward the right edge */
+    margin-left: auto;
 }
 
 .tab-btn {
@@ -173,7 +171,7 @@ input[type="email"], input[type="password"], input[type="text"] {
     outline: none;
 }
 
-/* GLOBAL DARK BUTTON SYSTEM */
+/* BUTTONS */
 .btn { 
     padding: 10px; 
     border: none; 
@@ -195,7 +193,7 @@ hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
 .forgot-text a { color: var(--accent-red); font-weight: bold; text-decoration: none; }
 .message-text { margin-top: 10px; font-size: 0.9rem; color: #ff8080; }
 
-/* VIEWPORT ENGINE */
+/* VIEWPORT & TO-DO GRID */
 .app-viewport {
     padding: 20px;
     flex: 1;
@@ -209,7 +207,6 @@ hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
     flex: 1;
 }
 
-/* TO-DO GRID */
 .categories-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -222,6 +219,8 @@ hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
     padding: 20px;
     border-left: 4px solid var(--accent-red);
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
 }
 
 .category-card h3 {
@@ -232,7 +231,7 @@ hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
     padding-bottom: 8px;
 }
 
-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 15px; flex: 1; }
 th { text-align: left; padding: 8px; color: var(--text-muted); font-size: 0.9rem; border-bottom: 1px solid var(--border-color); }
 td { padding: 8px; }
 .status-col { width: 50px; text-align: center; }
@@ -243,8 +242,11 @@ td { padding: 8px; }
 .completed .task-input { text-decoration: line-through; color: var(--text-muted); }
 .row-delete-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; }
 .row-delete-btn:hover { color: var(--accent-red); }
-.table-actions { display: flex; gap: 10px; }
-.table-actions button { flex: 1; font-size: 0.85rem; padding: 8px; }
+
+/* TASK CREATOR FORM (FIXED FOR TYPING FOCUS) */
+.task-creator-row { display: flex; gap: 8px; margin-top: auto; }
+.task-creator-row input { flex: 1; font-size: 0.9rem; }
+.task-creator-row button { padding: 8px 14px; font-size: 0.85rem; flex-shrink: 0; }
 
 /* CHAT STYLES */
 .chat-window {
@@ -293,20 +295,11 @@ td { padding: 8px; }
     gap: 15px;
 }
 
-/* MESSAGES COMPONENT LAYOUT */
-.message-wrapper {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 75%;
-}
-
+.message-wrapper { display: flex; flex-direction: column; width: 100%; max-width: 75%; }
 .message-wrapper.outgoing { align-self: flex-end; align-items: flex-end; }
 .message-wrapper.incoming { align-self: flex-start; align-items: flex-start; }
-
 .msg-meta { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 3px; padding: 0 4px; }
 
-/* INLINE THREAD REPLIES */
 .inline-reply-box {
     background: rgba(255, 255, 255, 0.06);
     border-left: 3px solid var(--accent-blue);
@@ -334,12 +327,9 @@ td { padding: 8px; }
 .outgoing .msg-bubble { background-color: var(--accent-red); border-bottom-right-radius: 2px; }
 .incoming .msg-bubble { background-color: var(--bg-input); border-bottom-left-radius: 2px; }
 
-/* DYNAMIC REACTION ALIGNMENTS */
 .msg-addons { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; width: 100%; }
-
 .outgoing .reactions-row { justify-content: flex-end; }
 .incoming .reactions-row { justify-content: flex-start; }
-
 .reactions-row { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
 
 .reaction-chip {
@@ -357,7 +347,6 @@ td { padding: 8px; }
     background-color: rgba(66, 133, 244, 0.15);
 }
 
-/* REPLY INPUT ROW */
 .reply-preview {
     display: flex;
     justify-content: space-between;
@@ -370,17 +359,10 @@ td { padding: 8px; }
     border-radius: 4px;
     margin-bottom: 8px;
 }
-.cancel-reply-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-main);
-    font-size: 1.2rem;
-    cursor: pointer;
-}
-
+.cancel-reply-btn { background: transparent; border: none; color: var(--text-main); font-size: 1.2rem; cursor: pointer; }
 .chat-input-row { display: flex; gap: 10px; }
 
-/* CONTEXT MENU STYLES */
+/* CONTEXT MENU */
 .context-menu {
     position: absolute;
     background-color: var(--bg-card);
@@ -394,18 +376,9 @@ td { padding: 8px; }
     min-width: 180px;
 }
 
-.emoji-reaction-row {
-    display: flex;
-    justify-content: space-around;
-    padding: 6px 10px;
-}
-.menu-emoji-btn {
-    font-size: 1.25rem;
-    cursor: pointer;
-    transition: transform 0.1s;
-}
+.emoji-reaction-row { display: flex; justify-content: space-around; padding: 6px 10px; }
+.menu-emoji-btn { font-size: 1.25rem; cursor: pointer; transition: transform 0.1s; }
 .menu-emoji-btn:hover { transform: scale(1.25); }
-
 .menu-divider { border: 0; height: 1px; background: var(--border-color); margin: 4px 0; }
 
 .context-menu button {
@@ -423,7 +396,6 @@ td { padding: 8px; }
 .context-menu button.danger-item { color: #ff8080; }
 .context-menu button.danger-item:hover { background-color: rgba(211, 47, 47, 0.2); }
 
-/* MOBILE BREAKS */
 @media (max-width: 600px) {
     .top-bar { padding: 10px 15px; flex-direction: column; align-items: stretch; gap: 15px; }
     .nav-tabs { justify-content: space-around; margin-left: 0; }
