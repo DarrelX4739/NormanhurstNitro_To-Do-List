@@ -24,7 +24,7 @@ let currentUserEmail = "";
 let currentWidget = "todo";
 let lastReadTimestamp = 0;
 let highestMessageTimestamp = 0;
-let pressTimer = null; // Long press tracking on touch screens
+let pressTimer = null;
 
 // DOM Selectors
 const loginContainer = document.getElementById("login-container");
@@ -39,6 +39,10 @@ const chatSendBtn = document.getElementById("chat-send-btn");
 const pinnedDrawer = document.getElementById("pinned-messages-drawer");
 const pinnedList = document.getElementById("pinned-list");
 
+const contextMenu = document.getElementById("custom-context-menu");
+const menuPinBtn = document.getElementById("menu-pin-btn");
+const menuDeleteBtn = document.getElementById("menu-delete-btn");
+
 // ==========================================
 // 2. AUTH REGISTRATION AND ROUTING HOOKS
 // ==========================================
@@ -49,7 +53,6 @@ auth.onAuthStateChanged((user) => {
         loginContainer.classList.add("hidden");
         appContainer.classList.remove("hidden");
         
-        // Retrieve internal persistent storage timestamp values
         lastReadTimestamp = parseInt(localStorage.getItem(`chat_last_read_${currentUserEmail}`)) || 0;
         
         initializeTodoSync();
@@ -60,7 +63,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Tab Switch Widget Panel Management Matrix
 window.switchWidget = function(targetWidget) {
     currentWidget = targetWidget;
     document.getElementById("tab-todo-btn").classList.remove("active");
@@ -75,32 +77,17 @@ window.switchWidget = function(targetWidget) {
         document.getElementById("tab-chat-btn").classList.add("active");
         document.getElementById("widget-chat").classList.remove("hidden");
         
-        // Update read tracking state variables
         lastReadTimestamp = Date.now();
         localStorage.setItem(`chat_last_read_${currentUserEmail}`, lastReadTimestamp);
         chatBadge.classList.add("hidden");
         
-        // Re-scroll down viewport view container execution frames
         setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
     }
 };
 
-// Toggle view parameters inside drawer panels
 window.togglePinsView = function() {
     pinnedDrawer.classList.toggle("hidden");
 };
-
-// Setup registration screen options toggle links
-function setupToggleLink() {
-    const link = document.getElementById("toggle-auth-link");
-    if (link) {
-        link.addEventListener("click", (e) => {
-            e.preventDefault();
-            alert("Use standard email details directly to sign in or create credentials instantly via matching registration fields.");
-        });
-    }
-}
-setupToggleLink();
 
 document.getElementById("email-auth-btn").addEventListener("click", () => {
     const email = document.getElementById("email-input").value;
@@ -209,7 +196,6 @@ function initializeChatSync() {
                 if (msTime > localHighestTimestamp) localHighestTimestamp = msTime;
             }
 
-            // Route execution outputs directly to formatting layers
             renderChatMessage(msgId, msg);
             if (msg.pinned) {
                 renderPinnedMessage(msgId, msg);
@@ -218,7 +204,6 @@ function initializeChatSync() {
 
         highestMessageTimestamp = localHighestTimestamp;
 
-        // Manage active background panel badges notification triggers
         if (currentWidget !== "chat" && highestMessageTimestamp > lastReadTimestamp) {
             chatBadge.classList.remove("hidden");
         } else if (currentWidget === "chat") {
@@ -235,11 +220,10 @@ function renderChatMessage(msgId, msg) {
     const wrapper = document.createElement("div");
     wrapper.className = `message-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}`;
     
-    // Combine arrays safely
     const reactions = msg.reactions || [];
     const comments = msg.comments || [];
     
-    let reactionsHTML = reactions.map((r, i) => `<span class="reaction-chip" onclick="addReaction('${msgId}', '${r.emoji}')">${r.emoji} ${r.count}</span>`).join("");
+    let reactionsHTML = reactions.map((r) => `<span class="reaction-chip" onclick="addReaction('${msgId}', '${r.emoji}')">${r.emoji} ${r.count}</span>`).join("");
     let commentsHTML = comments.map(c => `<div class="comment-line"><span class="comment-author">${c.author.split('@')[0]}</span>: ${escapeHTML(c.text)}</div>`).join("");
 
     wrapper.innerHTML = `
@@ -255,19 +239,19 @@ function renderChatMessage(msgId, msg) {
 
     chatMessages.appendChild(wrapper);
 
-    // Bind full event handling parameters for context options
     const bubbleElement = document.getElementById(`bubble-${msgId}`);
     
-    // Desktop right-click hook
+    // Desktop Right-Click UI Trigger
     bubbleElement.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        openMessageMenu(msgId, isOutgoing, msg.pinned);
+        openMessageMenu(msgId, isOutgoing, msg.pinned, e.clientX, e.clientY);
     });
 
-    // Mobile touch framework translation hooks
-    bubbleElement.addEventListener("touchstart", () => {
+    // Mobile Long Press UI Trigger
+    bubbleElement.addEventListener("touchstart", (e) => {
         pressTimer = setTimeout(() => {
-            openMessageMenu(msgId, isOutgoing, msg.pinned);
+            const touch = e.touches[0];
+            openMessageMenu(msgId, isOutgoing, msg.pinned, touch.clientX, touch.clientY);
         }, 600);
     });
     
@@ -281,20 +265,39 @@ function renderPinnedMessage(msgId, msg) {
     pinnedList.appendChild(item);
 }
 
-// Action Context Overlay Windows
-function openMessageMenu(msgId, isOwner, isPinned) {
-    const action = prompt(`Choose an option:\n1. ${isPinned ? "Unpin Message" : "Pin Message"}\n2. ${isOwner ? "Delete Message" : "Delete (Disabled - Not your message)"}\nType 1 or 2:`);
-    
-    if (action === "1") {
+// Custom Context Menu Overlay Engine
+function openMessageMenu(msgId, isOwner, isPinned, clientX, clientY) {
+    contextMenu.style.left = `${clientX}px`;
+    contextMenu.style.top = `${clientY}px`;
+    contextMenu.classList.remove("hidden");
+
+    menuPinBtn.onclick = () => {
         CHAT_REF.doc(msgId).update({ pinned: !isPinned });
-    } else if (action === "2") {
-        if (isOwner) {
-            if (confirm("Delete this message?")) CHAT_REF.doc(msgId).delete();
-        } else {
-            alert("You can only delete your own messages!");
-        }
+        closeCustomMenu();
+    };
+
+    if (isOwner) {
+        menuDeleteBtn.classList.remove("hidden");
+        menuDeleteBtn.onclick = () => {
+            if (confirm("Delete this message?")) {
+                CHAT_REF.doc(msgId).delete();
+            }
+            closeCustomMenu();
+        };
+    } else {
+        menuDeleteBtn.classList.add("hidden");
     }
 }
+
+function closeCustomMenu() {
+    contextMenu.classList.add("hidden");
+}
+
+document.addEventListener("click", (e) => {
+    if (!contextMenu.contains(e.target)) {
+        closeCustomMenu();
+    }
+});
 
 // ==========================================
 // 5. CHAT ENGAGEMENT ADD-ON ACTIONS
