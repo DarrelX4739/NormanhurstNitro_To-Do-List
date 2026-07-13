@@ -75,7 +75,7 @@ function setupToggleLink() {
 }
 setupToggleLink();
 
-// Handle Email Auth (Sign In vs Sign Up)
+// Handle Email Auth (Sign In vs Sign Up + Database Logging)
 emailAuthBtn.addEventListener("click", () => {
     const email = document.getElementById("email-input").value;
     const password = document.getElementById("password-input").value;
@@ -86,11 +86,24 @@ emailAuthBtn.addEventListener("click", () => {
     }
 
     if (isSignUpMode) {
+        // 1. Creates the account in Firebase Authentication
         auth.createUserWithEmailAndPassword(email, password)
-            .catch((error) => { authMessage.innerText = error.message; });
+            .then((userCredential) => {
+                // 2. Automatically creates a record of them in your Firestore Database
+                return db.collection("users").doc(userCredential.user.uid).set({
+                    email: email,
+                    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            })
+            .catch((error) => { 
+                authMessage.innerText = error.message; 
+            });
     } else {
+        // Normal Sign In
         auth.signInWithEmailAndPassword(email, password)
-            .catch((error) => { authMessage.innerText = error.message; });
+            .catch((error) => { 
+                authMessage.innerText = error.message; 
+            });
     }
 });
 
