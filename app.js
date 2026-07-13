@@ -140,6 +140,8 @@ function initializeTodoSync() {
         const data = doc.data();
         if (document.activeElement !== robotNameInput) {
             robotNameInput.value = data.robotName || "";
+            // Keep CSS moving-border sizing variable accurate to data values
+            robotNameInput.parentNode.dataset.value = data.robotName || "";
         }
         CATEGORIES.forEach(cat => {
             const tbody = document.getElementById(`tbody-${cat}`);
@@ -158,6 +160,11 @@ function initializeTodoSync() {
         });
     });
 }
+
+// Add header update handler hook
+robotNameInput.addEventListener("change", (e) => {
+    TODO_REF.update({ robotName: e.target.value.trim() });
+});
 
 window.addTodoRow = function(cat) {
     const rowId = "row-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
@@ -229,17 +236,15 @@ function renderChatMessage(msgId, msg) {
     const wrapper = document.createElement("div");
     wrapper.className = `message-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}`;
     
-    // Read the reaction map counts dynamically
+    // Process real-time reaction counts dynamically from map schema
     const reactionMap = msg.reactionsMap || {};
     const emojiCounts = { '❤️': 0, '😊': 0, '🔥': 0, '💀': 0, '😭': 0 };
-    let hasUserReactedToAny = false;
 
     Object.keys(reactionMap).forEach(user => {
         const chosenEmoji = reactionMap[user];
         if (emojiCounts[chosenEmoji] !== undefined) {
             emojiCounts[chosenEmoji]++;
         }
-        if (user === currentUserEmail) hasUserReactedToAny = true;
     });
 
     let reactionsHTML = "";
@@ -254,7 +259,6 @@ function renderChatMessage(msgId, msg) {
         }
     });
 
-    // Check for nested parent message replies
     let replyHTML = "";
     if (msg.replyTo) {
         replyHTML = `
@@ -343,7 +347,7 @@ document.addEventListener("click", (e) => {
     if (!contextMenu.contains(e.target)) closeCustomMenu();
 });
 
-// Single Reaction Per Message Implementation
+// Menu reaction wrapper link
 window.handleMenuReaction = function(emoji) {
     if (!activeSelectedMsgId) return;
     toggleReactionDirectly(activeSelectedMsgId, emoji);
@@ -357,9 +361,9 @@ window.toggleReactionDirectly = function(msgId, emoji) {
         let map = data.reactionsMap || {};
 
         if (map[currentUserEmail] === emoji) {
-            delete map[currentUserEmail]; // Remove if clicked identical emoji again
+            delete map[currentUserEmail]; 
         } else {
-            map[currentUserEmail] = emoji; // Assign or overwrite existing single option choice
+            map[currentUserEmail] = emoji; 
         }
 
         CHAT_REF.doc(msgId).update({ reactionsMap: map });
