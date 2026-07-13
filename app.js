@@ -2,12 +2,12 @@
 // 1. PASTE YOUR FIREBASE API DETAILS HERE
 // ==========================================
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY_HERE",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBRTH0niMDYdcbYzLeJmFYxJdr5clmlWGg",
+    authDomain: "nitrotodolist.firebaseapp.com",
+    projectId: "nitrotodolist",
+    storageBucket: "nitrotodolist.firebasestorage.app",
+    messagingSenderId: "605856204166",
+    appId: "1:605856204166:web:c212ac6e628e6e0eae5807"
 };
 
 // Initialize Firebase
