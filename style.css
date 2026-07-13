@@ -95,7 +95,7 @@ body {
     display: inline-block;
 }
 
-/* AUTH & REGISTRATION BOARDS */
+/* AUTH BOARDS */
 .auth-box {
     max-width: 400px;
     margin: 40px auto;
@@ -134,7 +134,7 @@ hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
 .forgot-text a { color: var(--accent-red); font-weight: bold; text-decoration: none; }
 .message-text { margin-top: 10px; font-size: 0.9rem; color: #ff8080; }
 
-/* VIEWPORT CONTAINER RULES */
+/* LAYOUT CONTAINER */
 .app-viewport {
     padding: 20px;
     flex: 1;
@@ -148,7 +148,7 @@ hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
     flex: 1;
 }
 
-/* TO-DO SPECIFIC LAYOUT */
+/* TO-DO GRID */
 .categories-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -185,7 +185,7 @@ td { padding: 8px; }
 .table-actions { display: flex; gap: 10px; }
 .table-actions button { flex: 1; font-size: 0.85rem; padding: 8px; }
 
-/* WIDGET CHAT DOM STRUCTURE */
+/* CHAT WIDGET STYLES */
 .chat-window {
     background-color: var(--bg-card);
     border-radius: 8px;
@@ -217,7 +217,6 @@ td { padding: 8px; }
     max-height: 150px;
     overflow-y: auto;
 }
-
 .pinned-drawer h4 { font-size: 0.9rem; color: gold; margin-bottom: 8px; text-transform: uppercase; }
 
 .chat-messages-box {
@@ -233,7 +232,7 @@ td { padding: 8px; }
     gap: 15px;
 }
 
-/* VISUAL ALIGNMENT DIRECTIONS */
+/* MESSAGE BUBBLES & INLINE STRUCTS */
 .message-wrapper {
     display: flex;
     flex-direction: column;
@@ -241,22 +240,24 @@ td { padding: 8px; }
     max-width: 75%;
 }
 
-.message-wrapper.outgoing {
-    align-self: flex-end;
-    align-items: flex-end;
-}
+.message-wrapper.outgoing { align-self: flex-end; align-items: flex-end; }
+.message-wrapper.incoming { align-self: flex-start; align-items: flex-start; }
 
-.message-wrapper.incoming {
-    align-self: flex-start;
-    align-items: flex-start;
-}
+.msg-meta { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 3px; padding: 0 4px; }
 
-.msg-meta {
-    font-size: 0.75rem;
+/* INLINE REPLIES BOX */
+.inline-reply-box {
+    background: rgba(255, 255, 255, 0.06);
+    border-left: 3px solid var(--accent-blue);
+    padding: 5px 10px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    font-size: 0.8rem;
     color: var(--text-muted);
-    margin-bottom: 3px;
-    padding: 0 4px;
+    width: 100%;
+    margin-bottom: -1px;
 }
+.reply-sender-label { font-weight: bold; color: var(--accent-blue); margin-right: 5px; }
 
 .msg-bubble {
     padding: 10px 14px;
@@ -268,77 +269,78 @@ td { padding: 8px; }
     cursor: context-menu;
     user-select: none;
 }
+.outgoing .msg-bubble { background-color: var(--accent-red); border-bottom-right-radius: 2px; }
+.incoming .msg-bubble { background-color: var(--bg-input); border-bottom-left-radius: 2px; }
 
-.outgoing .msg-bubble {
-    background-color: var(--accent-red);
-    border-bottom-right-radius: 2px;
-}
+.outgoing .inline-reply-box { border-left-color: #ffffff; }
 
-.incoming .msg-bubble {
-    background-color: var(--bg-input);
-    border-bottom-left-radius: 2px;
-}
-
-/* OVERLAYS: COMMENTS AND ACTIONS */
-.msg-addons {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 4px;
-    width: 100%;
-}
-
-.reactions-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-}
+/* REACTION ROW LAYOUT */
+.msg-addons { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; width: 100%; }
+.reactions-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .reaction-chip {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 2px 6px;
+    padding: 2px 8px;
     font-size: 0.75rem;
+    user-select: none;
+}
+.reaction-chip.user-reacted {
+    border-color: var(--accent-blue);
+    background-color: rgba(66, 133, 244, 0.1);
+}
+
+/* INPUT PREVIEW PANEL STYLES */
+.reply-preview {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-input);
+    border-left: 4px solid var(--accent-blue);
+    padding: 8px 15px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+.cancel-reply-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 1.2rem;
     cursor: pointer;
 }
 
-.comments-box {
-    background: rgba(255,255,255,0.03);
-    border-left: 2px solid var(--border-color);
-    padding-left: 8px;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-top: 2px;
-}
+.chat-input-row { display: flex; gap: 10px; }
 
-.comment-line {
-    margin-bottom: 2px;
-}
-
-.comment-author {
-    font-weight: bold;
-    color: var(--accent-blue);
-}
-
-.chat-input-row {
-    display: flex;
-    gap: 10px;
-}
-
-/* CUSTOM CONTEXT MENU STYLES */
+/* CUSTOM CLEAN CONTEXT MENU OVERLAY */
 .context-menu {
     position: absolute;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.6);
     z-index: 10000;
     display: flex;
     flex-direction: column;
-    padding: 5px 0;
-    min-width: 160px;
+    padding: 6px 0;
+    min-width: 180px;
 }
+
+.emoji-reaction-row {
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 10px;
+}
+.menu-emoji-btn {
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+.menu-emoji-btn:hover { transform: scale(1.25); }
+
+.menu-divider { border: 0; height: 1px; background: var(--border-color); margin: 4px 0; }
 
 .context-menu button {
     background: transparent;
@@ -349,20 +351,11 @@ td { padding: 8px; }
     font-size: 0.9rem;
     cursor: pointer;
     width: 100%;
-    transition: background 0.2s;
+    transition: background 0.15s;
 }
-
-.context-menu button:hover {
-    background-color: var(--bg-input);
-}
-
-.context-menu button.danger-item {
-    color: #ff8080;
-}
-
-.context-menu button.danger-item:hover {
-    background-color: rgba(211, 47, 47, 0.2);
-}
+.context-menu button:hover { background-color: var(--bg-input); }
+.context-menu button.danger-item { color: #ff8080; }
+.context-menu button.danger-item:hover { background-color: rgba(211, 47, 47, 0.2); }
 
 /* MOBILE RESPONSIVENESS */
 @media (max-width: 600px) {
