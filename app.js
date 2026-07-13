@@ -17,6 +17,7 @@ const db = firebase.firestore();
 const CATEGORIES = ["Design", "Mechanical", "Electrical", "Software", "Media"];
 const TODO_REF = db.collection("nitro_todo").doc("season_2026");
 const CHAT_REF = db.collection("nitro_workspace_chat");
+const ANNOUNCEMENT_REF = db.collection("nitro_workspace_config").doc("global_announcement");
 
 let currentUserEmail = "";
 let currentWidget = "todo";
@@ -24,6 +25,7 @@ let lastReadTimestamp = 0;
 let highestMessageTimestamp = 0;
 let pressTimer = null;
 let activeReplyTarget = null; 
+let announcementExpiryTimer = null;
 
 // DOM Selectors
 const loginContainer = document.getElementById("login-container");
@@ -38,6 +40,7 @@ const chatInput = document.getElementById("chat-input");
 const chatSendBtn = document.getElementById("chat-send-btn");
 const pinnedDrawer = document.getElementById("pinned-messages-drawer");
 const pinnedList = document.getElementById("pinned-list");
+const announcementBanner = document.getElementById("announcement-banner");
 
 const contextMenu = document.getElementById("custom-context-menu");
 const menuReplyBtn = document.getElementById("menu-reply-btn");
@@ -62,6 +65,7 @@ auth.onAuthStateChanged((user) => {
         
         initializeTodoSync();
         initializeChatSync();
+        initializeAnnouncementSync();
     } else {
         loginContainer.classList.remove("hidden");
         appContainer.classList.add("hidden");
@@ -109,7 +113,7 @@ document.getElementById("email-auth-btn").addEventListener("click", () => {
 document.getElementById("logout-btn").addEventListener("click", () => auth.signOut());
 
 // ==========================================
-// 3. TO-DO BOARD SYNC ENGINE (FOCUS FIXED)
+// 3. TO-DO BOARD SYNC ENGINE
 // ==========================================
 function buildTodoUI() {
     sectionsWrapper.innerHTML = "";
@@ -129,7 +133,6 @@ function buildTodoUI() {
         `;
         sectionsWrapper.appendChild(div);
         
-        // Support pressing Enter inside the new task input
         setTimeout(() => {
             const inputEl = document.getElementById(`new-task-${cat}`);
             if (inputEl) {
@@ -156,7 +159,6 @@ function initializeTodoSync() {
             const tbody = document.getElementById(`tbody-${cat}`);
             const rows = data[cat] || [];
             
-            // Check which element currently has focus so we don't disrupt typing inside existing rows
             const activeEl = document.activeElement;
             const activeRowId = activeEl && activeEl.dataset ? activeEl.dataset.rowId : null;
             
@@ -177,7 +179,6 @@ function initializeTodoSync() {
                 tbody.appendChild(tr);
             });
             
-            // Restore focus if the user was editing an existing row when the database synced
             if (activeRowId) {
                 const restoredInput = tbody.querySelector(`input[data-row-id="${activeRowId}"]`);
                 if (restoredInput) {
@@ -194,7 +195,6 @@ robotNameInput.addEventListener("input", (e) => {
     triggerFailSafeWidth();
 });
 
-// Added Function: Creates task from the dedicated input without focus loss
 window.addNewTask = function(cat) {
     const inputEl = document.getElementById(`new-task-${cat}`);
     if (!inputEl) return;
@@ -206,7 +206,7 @@ window.addNewTask = function(cat) {
         [cat]: firebase.firestore.FieldValue.arrayUnion({ id: rowId, task: taskText, completed: false }) 
     }).then(() => {
         inputEl.value = "";
-        inputEl.focus(); // Keeps your cursor in the box!
+        inputEl.focus();
     });
 };
 
@@ -234,7 +234,7 @@ window.removeTodoRow = function(cat, rowId) {
 };
 
 // ==========================================
-// 4. REAL-TIME CHAT ENGINE
+// 4. REAL-TIME CHAT ENGINE (INTERCEPT ENABLED)
 // ==========================================
 function initializeChatSync() {
     CHAT_REF.orderBy("timestamp", "asc").onSnapshot((snapshot) => {
@@ -346,7 +346,44 @@ function renderPinnedMessage(msgId, msg) {
 }
 
 // ==========================================
-// 5. CONTEXT MENU & REACTIONS
+// 5. 15-MINUTE EXPIRES BANNER ENGINE
+// ==========================================
+function initializeAnnouncementSync() {
+    ANNOUNCEMENT_REF.onSnapshot((doc) => {
+        if (announcementExpiryTimer) clearTimeout(announcementExpiryTimer);
+        
+        if (!doc.exists) {
+            announcementBanner.classList.add("hidden");
+            return;
+        }
+
+        const data = doc.data();
+        if (!data.text) {
+            announcementBanner.classList.add("hidden");
+            return;
+        }
+
+        // Handle case where server timestamp calculation is pending on local client echo
+        const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : data.timestamp) : Date.now();
+        const difference = Date.now() - timestampMs;
+        const fifteenMinutes = 15 * 60 * 1000;
+
+        if (difference < fifteenMinutes) {
+            announcementBanner.innerHTML = `📢 <strong>Announcement:</strong> ${escapeHTML(data.text)}`;
+            announcementBanner.classList.remove("hidden");
+
+            const remainingTime = fifteenMinutes - difference;
+            announcementExpiryTimer = setTimeout(() => {
+                announcementBanner.classList.add("hidden");
+            }, remainingTime);
+        } else {
+            announcementBanner.classList.add("hidden");
+        }
+    });
+}
+
+// ==========================================
+// 6. CONTEXT MENU & REACTIONS
 // ==========================================
 function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     activeSelectedMsgId = msgId;
@@ -422,7 +459,7 @@ window.toggleReactionDirectly = function(msgId, emoji) {
 };
 
 // ==========================================
-// 6. REPLY HANDLING STATES
+// 7. REPLY HANDLING STATES
 // ==========================================
 function setupReplyState(msgId, msgData) {
     activeReplyTarget = {
@@ -441,12 +478,26 @@ window.cancelReplyState = function() {
 };
 
 // ==========================================
-// 7. MESSAGE DISPATCH TRANSMISSION
+// 8. MESSAGE DISPATCH TRANSMISSION (COMMAND INTELLIGENCE)
 // ==========================================
 function sendMsg() {
     const text = chatInput.value.trim();
     if (!text) return;
     chatInput.value = "";
+
+    // Command Intercept Hook Engine
+    if (text.startsWith('/announce ')) {
+        const announcementContent = text.substring(10).trim();
+        if (announcementContent) {
+            ANNOUNCEMENT_REF.set({
+                text: announcementContent,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                cancelReplyState();
+            }).catch(err => console.error("Announcement transmission fail: ", err));
+        }
+        return; // Halts regular text dispatch execution
+    }
 
     const payload = {
         text: text,
@@ -474,7 +525,7 @@ function escapeHTML(str) {
 }
 
 // ==========================================
-// 8. FAIL-SAFE WIDTH ENGINE
+// 9. FAIL-SAFE WIDTH ENGINE
 // ==========================================
 function triggerFailSafeWidth() {
     if (robotNameInput && robotWrap) {
