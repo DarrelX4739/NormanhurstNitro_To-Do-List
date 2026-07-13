@@ -50,12 +50,14 @@ body {
     text-transform: uppercase;
 }
 
-/* Dynamic Text Track Input - Shrinks cleanly past placeholder limitations */
+/* Dynamic Text Track Input - Shrinks cleanly past browser layout limitations */
 .input-wrap {
     display: inline-grid;
     align-items: center;
     position: relative;
     border-bottom: 2px dashed var(--accent-red);
+    min-width: 10px;
+    max-width: max-content;
 }
 .input-wrap::after, .input-wrap input {
     grid-area: 1/1;
@@ -66,7 +68,6 @@ body {
     background: none;
     border: none;
     outline: none;
-    width: 100%;
 }
 .input-wrap::after {
     content: attr(data-value);
@@ -74,13 +75,13 @@ body {
     white-space: pre;
     display: inline-block;
 }
-/* When entirely empty, size the track line to the placeholder text width */
+/* Default template fallback sizing logic */
 .input-wrap[data-value=""]::after {
     content: "insert robot name here";
 }
 .input-wrap input {
     width: 100%;
-    min-width: 0; /* Unlocks the ability to collapse completely to character widths */
+    min-width: 0;
 }
 .input-wrap input:focus::placeholder {
     color: transparent;
@@ -152,7 +153,7 @@ input[type="email"], input[type="password"], input[type="text"] {
     outline: none;
 }
 
-/* GLOBAL DARK BUTTON SYSTEM */
+/* GLOBAL DARK BUTTON SYSTEM - Fixes white buttons */
 .btn { 
     padding: 10px; 
     border: none; 
