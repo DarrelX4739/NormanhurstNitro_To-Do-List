@@ -17,7 +17,7 @@ const db = firebase.firestore();
 const CATEGORIES = ["Design", "Mechanical", "Electrical", "Software", "Media"];
 const TODO_REF = db.collection("nitro_todo").doc("season_2026");
 const CHAT_REF = db.collection("nitro_workspace_chat");
-const ANNOUNCEMENT_REF = db.collection("nitro_workspace_config").doc("global_announcement");
+const ANNOUNCEMENTS_COLLECTION = db.collection("nitro_announcements");
 
 let currentUserEmail = "";
 let currentWidget = "todo";
@@ -25,7 +25,10 @@ let lastReadTimestamp = 0;
 let highestMessageTimestamp = 0;
 let pressTimer = null;
 let activeReplyTarget = null; 
-let announcementExpiryTimer = null;
+
+// Track active tracking structures for stackable banners
+let dismissedAnnouncements = new Set();
+let activeAnnouncementTimers = {};
 
 // DOM Selectors
 const loginContainer = document.getElementById("login-container");
@@ -40,7 +43,7 @@ const chatInput = document.getElementById("chat-input");
 const chatSendBtn = document.getElementById("chat-send-btn");
 const pinnedDrawer = document.getElementById("pinned-messages-drawer");
 const pinnedList = document.getElementById("pinned-list");
-const announcementBanner = document.getElementById("announcement-banner");
+const announcementContainer = document.getElementById("announcement-container");
 
 const contextMenu = document.getElementById("custom-context-menu");
 const menuReplyBtn = document.getElementById("menu-reply-btn");
@@ -234,7 +237,7 @@ window.removeTodoRow = function(cat, rowId) {
 };
 
 // ==========================================
-// 4. REAL-TIME CHAT ENGINE (INTERCEPT ENABLED)
+// 4. REAL-TIME CHAT ENGINE
 // ==========================================
 function initializeChatSync() {
     CHAT_REF.orderBy("timestamp", "asc").onSnapshot((snapshot) => {
@@ -346,41 +349,55 @@ function renderPinnedMessage(msgId, msg) {
 }
 
 // ==========================================
-// 5. 15-MINUTE EXPIRES BANNER ENGINE
+// 5. STACKABLE 15-MINUTE EXPIRY ANNOUNCEMENT SYNC ENGINE
 // ==========================================
 function initializeAnnouncementSync() {
-    ANNOUNCEMENT_REF.onSnapshot((doc) => {
-        if (announcementExpiryTimer) clearTimeout(announcementExpiryTimer);
-        
-        if (!doc.exists) {
-            announcementBanner.classList.add("hidden");
-            return;
-        }
+    ANNOUNCEMENTS_COLLECTION.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+        // Clear all running local timeouts to rebuild clean active states
+        Object.values(activeAnnouncementTimers).forEach(clearTimeout);
+        activeAnnouncementTimers = {};
 
-        const data = doc.data();
-        if (!data.text) {
-            announcementBanner.classList.add("hidden");
-            return;
-        }
+        announcementContainer.innerHTML = "";
 
-        // Handle case where server timestamp calculation is pending on local client echo
-        const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : data.timestamp) : Date.now();
-        const difference = Date.now() - timestampMs;
-        const fifteenMinutes = 15 * 60 * 1000;
+        snapshot.forEach((doc) => {
+            const id = doc.id;
+            const data = doc.data();
 
-        if (difference < fifteenMinutes) {
-            announcementBanner.innerHTML = `📢 <strong>Announcement:</strong> ${escapeHTML(data.text)}`;
-            announcementBanner.classList.remove("hidden");
+            // Skip rendering if current user has already dismissed this banner locally
+            if (dismissedAnnouncements.has(id)) return;
 
-            const remainingTime = fifteenMinutes - difference;
-            announcementExpiryTimer = setTimeout(() => {
-                announcementBanner.classList.add("hidden");
-            }, remainingTime);
-        } else {
-            announcementBanner.classList.add("hidden");
-        }
+            const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : data.timestamp) : Date.now();
+            const difference = Date.now() - timestampMs;
+            const fifteenMinutes = 15 * 60 * 1000;
+
+            if (difference < fifteenMinutes) {
+                const banner = document.createElement("div");
+                banner.className = "announcement-banner";
+                banner.id = `banner-${id}`;
+                banner.innerHTML = `
+                    <span>📢 <strong>Announcement:</strong> ${escapeHTML(data.text)}</span>
+                    <button class="announcement-close-btn" onclick="manualDismissBanner('${id}')">&times;</button>
+                `;
+                
+                // Append inside stacking container wrapper
+                announcementContainer.appendChild(banner);
+
+                // Set independent life timer per single banner element instance
+                const remainingTime = fifteenMinutes - difference;
+                activeAnnouncementTimers[id] = setTimeout(() => {
+                    const el = document.getElementById(`banner-${id}`);
+                    if (el) el.remove();
+                }, remainingTime);
+            }
+        });
     });
 }
+
+window.manualDismissBanner = function(announcementId) {
+    dismissedAnnouncements.add(announcementId);
+    const el = document.getElementById(`banner-${announcementId}`);
+    if (el) el.remove();
+};
 
 // ==========================================
 // 6. CONTEXT MENU & REACTIONS
@@ -478,25 +495,25 @@ window.cancelReplyState = function() {
 };
 
 // ==========================================
-// 8. MESSAGE DISPATCH TRANSMISSION (COMMAND INTELLIGENCE)
+// 8. MESSAGE DISPATCH TRANSMISSION
 // ==========================================
 function sendMsg() {
     const text = chatInput.value.trim();
     if (!text) return;
     chatInput.value = "";
 
-    // Command Intercept Hook Engine
+    // Command Intercept Collection Engine
     if (text.startsWith('/announce ')) {
         const announcementContent = text.substring(10).trim();
         if (announcementContent) {
-            ANNOUNCEMENT_REF.set({
+            ANNOUNCEMENTS_COLLECTION.add({
                 text: announcementContent,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
                 cancelReplyState();
-            }).catch(err => console.error("Announcement transmission fail: ", err));
+            }).catch(err => console.error("Announcement addition fail: ", err));
         }
-        return; // Halts regular text dispatch execution
+        return; 
     }
 
     const payload = {
