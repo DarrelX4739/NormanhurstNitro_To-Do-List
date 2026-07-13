@@ -154,13 +154,13 @@ function buildCategoriesUI() {
                     <tr>
                         <th>Task</th>
                         <th class="status-col">Status</th>
+                        <th class="action-col"></th>
                     </tr>
                 </thead>
                 <tbody id="tbody-${cat}"></tbody>
             </table>
             <div class="table-actions">
-                <button class="btn secondary-btn" onclick="addRow('${cat}')">+ Add Row</button>
-                <button class="btn danger-btn" onclick="removeRow('${cat}')">- Remove Row</button>
+                <button class="btn secondary-btn" onclick="addRow('${cat}')">+ Add Task Row</button>
             </div>
         `;
         sectionsWrapper.appendChild(catDiv);
@@ -231,6 +231,9 @@ function renderRows(category, rowsData) {
                     ${rowData.completed ? "checked" : ""} 
                     onchange="updateData('${category}', ${index}, 'completed', this.checked)">
             </td>
+            <td class="action-col">
+                <button class="row-delete-btn" onclick="removeRow('${category}', ${index})">×</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -269,6 +272,7 @@ window.addRow = function(category) {
     tr.innerHTML = `
         <td><input type="text" class="task-input" placeholder="Insert task" value=""></td>
         <td class="status-col"><input type="checkbox" class="task-checkbox"></td>
+        <td class="action-col"><button class="row-delete-btn">×</button></td>
     `;
     tbody.appendChild(tr);
 
@@ -277,17 +281,21 @@ window.addRow = function(category) {
     }).catch(err => { console.error("Error adding row: ", err); });
 };
 
-window.removeRow = function(category) {
+window.removeRow = function(category, index) {
     DOC_REF.get().then((doc) => {
         if (!doc.exists) return;
         const data = doc.data();
         const currentList = data[category] || [];
         
-        if (currentList.length > 0) {
+        if (index >= 0 && index < currentList.length) {
+            // Remove the selected item directly from the UI first to keep it snappy
             const tbody = document.getElementById(`tbody-${category}`);
-            if (tbody.lastChild) tbody.removeChild(tbody.lastChild);
+            if (tbody && tbody.children[index]) {
+                tbody.removeChild(tbody.children[index]);
+            }
 
-            currentList.pop();
+            // Splice the specific targeted item out of the array dataset
+            currentList.splice(index, 1);
             DOC_REF.update({ [category]: currentList });
         }
     });
