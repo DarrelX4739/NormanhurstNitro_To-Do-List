@@ -173,7 +173,7 @@ function initializeRealtimeSync() {
     DOC_REF.onSnapshot((doc) => {
         if (!doc.exists) {
             const initialData = { robotName: "" };
-            CATEGORIES.forEach(cat => initialData[cat] = [{ task: "", completed: false }]);
+            CATEGORIES.forEach(cat => initialData[cat] = [{ id: "init-" + Date.now(), task: "", completed: false }]);
             DOC_REF.set(initialData);
             return;
         }
@@ -206,6 +206,7 @@ function initializeRealtimeSync() {
                     } else {
                         rowEl.classList.remove("completed");
                     }
+                    rowEl.querySelector(".row-delete-btn").onclick = () => removeRow(cat, row.id);
                 });
             }
         });
@@ -216,7 +217,7 @@ function renderRows(category, rowsData) {
     const tbody = document.getElementById(`tbody-${category}`);
     tbody.innerHTML = "";
 
-    rowsData.forEach((rowData, index) => {
+    rowsData.forEach((rowData) => {
         const tr = document.createElement("tr");
         if (rowData.completed) tr.classList.add("completed");
 
@@ -224,15 +225,15 @@ function renderRows(category, rowsData) {
             <td>
                 <input type="text" class="task-input" placeholder="Insert task" 
                     value="${rowData.task}" 
-                    oninput="updateData('${category}', ${index}, 'task', this.value)">
+                    oninput="updateData('${category}', '${rowData.id}', 'task', this.value)">
             </td>
             <td class="status-col">
                 <input type="checkbox" class="task-checkbox" 
                     ${rowData.completed ? "checked" : ""} 
-                    onchange="updateData('${category}', ${index}, 'completed', this.checked)">
+                    onchange="updateData('${category}', '${rowData.id}', 'completed', this.checked)">
             </td>
             <td class="action-col">
-                <button class="row-delete-btn" onclick="removeRow('${category}', ${index})">×</button>
+                <button class="row-delete-btn" onclick="removeRow('${category}', '${rowData.id}')">×</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -243,30 +244,36 @@ function renderRows(category, rowsData) {
 // 4. DATABASE MODIFICATION FUNCTIONS
 // ==========================================
 
-window.updateData = function(category, index, field, value) {
-    if (field === 'completed') {
-        const tbody = document.getElementById(`tbody-${category}`);
-        if (tbody && tbody.children[index]) {
-            if (value) {
-                tbody.children[index].classList.add("completed");
-            } else {
-                tbody.children[index].classList.remove("completed");
-            }
-        }
-    }
-
+window.updateData = function(category, rowId, field, value) {
     DOC_REF.get().then((doc) => {
         if (!doc.exists) return;
         const data = doc.data();
-        if(data[category] && data[category][index]) {
-            data[category][index][field] = value;
-            DOC_REF.update({ [category]: data[category] });
+        const currentList = data[category] || [];
+        const index = currentList.findIndex(item => item.id === rowId);
+
+        if (index !== -1) {
+            currentList[index][field] = value;
+            
+            if (field === 'completed') {
+                const tbody = document.getElementById(`tbody-${category}`);
+                if (tbody && tbody.children[index]) {
+                    if (value) {
+                        tbody.children[index].classList.add("completed");
+                    } else {
+                        tbody.children[index].classList.remove("completed");
+                    }
+                }
+            }
+
+            DOC_REF.update({ [category]: currentList });
         }
     });
 };
 
 window.addRow = function(category) {
-    const newRow = { task: "", completed: false };
+    const rowId = "row-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
+    const newRow = { id: rowId, task: "", completed: false };
+    
     const tbody = document.getElementById(`tbody-${category}`);
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -281,20 +288,19 @@ window.addRow = function(category) {
     }).catch(err => { console.error("Error adding row: ", err); });
 };
 
-window.removeRow = function(category, index) {
+window.removeRow = function(category, rowId) {
     DOC_REF.get().then((doc) => {
         if (!doc.exists) return;
         const data = doc.data();
         const currentList = data[category] || [];
+        const index = currentList.findIndex(item => item.id === rowId);
         
-        if (index >= 0 && index < currentList.length) {
-            // Remove the selected item directly from the UI first to keep it snappy
+        if (index !== -1) {
             const tbody = document.getElementById(`tbody-${category}`);
             if (tbody && tbody.children[index]) {
                 tbody.removeChild(tbody.children[index]);
             }
 
-            // Splice the specific targeted item out of the array dataset
             currentList.splice(index, 1);
             DOC_REF.update({ [category]: currentList });
         }
