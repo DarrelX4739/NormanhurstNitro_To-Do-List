@@ -48,16 +48,26 @@ body {
     font-size: 1.3rem;
     font-weight: bold;
     text-transform: uppercase;
+    flex: 1;
+    min-width: 0;
 }
 
-/* Dynamic Text Track Input - Shrinks cleanly past browser layout limitations */
+/* Critical Layout Fix: Prevents the word "Workspace" from being squished or covered */
+.header-static-text {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Dynamic Text Track Input - Scalable & Responsive */
 .input-wrap {
     display: inline-grid;
     align-items: center;
     position: relative;
     border-bottom: 2px dashed var(--accent-red);
     min-width: 10px;
-    max-width: max-content;
+    /* Viewport Safety Barrier: Stops expanding before hitting structural neighbors */
+    max-width: min(400px, 45vw); 
+    overflow: hidden;
 }
 .input-wrap::after, .input-wrap input {
     grid-area: 1/1;
@@ -96,6 +106,7 @@ body {
 .nav-tabs {
     display: flex;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .tab-btn {
@@ -153,7 +164,7 @@ input[type="email"], input[type="password"], input[type="text"] {
     outline: none;
 }
 
-/* GLOBAL DARK BUTTON SYSTEM - Fixes white buttons */
+/* GLOBAL DARK BUTTON SYSTEM */
 .btn { 
     padding: 10px; 
     border: none; 
