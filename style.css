@@ -136,6 +136,17 @@ hr {
     color: var(--text-muted);
 }
 
+.forgot-text a {
+    color: var(--accent-red);
+    font-weight: bold;
+    text-decoration: none;
+}
+
+#forgot-password-wrapper a {
+    color: var(--text-muted);
+    text-decoration: underline;
+}
+
 .message-text {
     margin-top: 10px;
     font-size: 0.9rem;
@@ -240,7 +251,6 @@ td {
     accent-color: var(--accent-red);
 }
 
-/* Strikethrough effect when checkbox is ticked */
 .completed .task-input {
     text-decoration: line-through;
     color: var(--text-muted);
