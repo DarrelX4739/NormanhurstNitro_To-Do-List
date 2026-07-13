@@ -50,30 +50,29 @@ body {
     text-transform: uppercase;
 }
 
-/* Dynamic Moving Border Text Track Input */
+/* Dynamic Moving Border Text Track Input - Form Fitted */
 .input-wrap {
     display: inline-grid;
-    vertical-align: top;
     align-items: center;
     position: relative;
     border-bottom: 2px dashed var(--accent-red);
 }
 .input-wrap::after, .input-wrap input {
-    width: auto;
-    min-width: 150px;
-    grid-area: 1/2;
+    grid-area: 1/1;
     font-size: 1.3rem;
     font-weight: bold;
-    padding: 2px 4px;
+    padding: 2px 0;
     color: var(--accent-red);
     background: none;
     border: none;
     outline: none;
+    width: 100%;
 }
 .input-wrap::after {
     content: attr(data-value) ' ';
     visibility: hidden;
-    white-space: pre-wrap;
+    white-space: pre;
+    display: block;
 }
 .input-wrap input:focus {
     color: var(--text-main);
@@ -281,9 +280,13 @@ td { padding: 8px; }
 .outgoing .msg-bubble { background-color: var(--accent-red); border-bottom-right-radius: 2px; }
 .incoming .msg-bubble { background-color: var(--bg-input); border-bottom-left-radius: 2px; }
 
-/* REACTION BOXES */
+/* DYNAMIC REACTION ALIGNMENTS */
 .msg-addons { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; width: 100%; }
-.reactions-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.outgoing .reactions-row { justify-content: flex-end; }
+.incoming .reactions-row { justify-content: flex-start; }
+
+.reactions-row { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
 
 .reaction-chip {
     background: var(--bg-card);
