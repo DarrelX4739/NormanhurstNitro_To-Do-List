@@ -50,12 +50,13 @@ body {
     text-transform: uppercase;
 }
 
-/* Dynamic Moving Border Text Track Input - Form Fitted */
+/* Dynamic Moving Border Text Track Input - Form Fitted & Fully Shrinkable */
 .input-wrap {
     display: inline-grid;
     align-items: center;
     position: relative;
     border-bottom: 2px dashed var(--accent-red);
+    min-width: 10px;
 }
 .input-wrap::after, .input-wrap input {
     grid-area: 1/1;
@@ -71,8 +72,8 @@ body {
 .input-wrap::after {
     content: attr(data-value) ' ';
     visibility: hidden;
-    white-space: pre;
-    display: block;
+    white-space: pre-wrap;
+    display: inline-block;
 }
 .input-wrap input:focus {
     color: var(--text-main);
@@ -140,6 +141,28 @@ input[type="email"], input[type="password"], input[type="text"] {
     border-radius: 4px;
     outline: none;
 }
+
+/* GLOBAL DARK BUTTON CORRECTIONS */
+.btn { 
+    padding: 10px; 
+    border: none; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    transition: background 0.2s, color 0.2s; 
+}
+.primary-btn { background-color: var(--accent-red); color: white; }
+.primary-btn:hover { background-color: var(--accent-red-hover); }
+.google-btn { background-color: #4285F4; color: white; }
+.google-btn:hover { background-color: #3574de; }
+.secondary-btn { background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); }
+.secondary-btn:hover { background-color: var(--border-color); }
+.danger-btn { background-color: transparent; border: 1px solid var(--accent-red); color: var(--accent-red); }
+.danger-btn:hover { background-color: var(--accent-red); color: white; }
+hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
+.forgot-text { font-size: 0.85rem; color: var(--text-muted); }
+.forgot-text a { color: var(--accent-red); font-weight: bold; text-decoration: none; }
+.message-text { margin-top: 10px; font-size: 0.9rem; color: #ff8080; }
 
 /* VIEWPORT ENGINE */
 .app-viewport {
@@ -296,6 +319,7 @@ td { padding: 8px; }
     font-size: 0.75rem;
     user-select: none;
     cursor: pointer;
+    color: var(--text-main);
 }
 .reaction-chip.user-reacted {
     border-color: var(--accent-blue);
