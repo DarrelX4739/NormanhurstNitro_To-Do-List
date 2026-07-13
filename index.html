@@ -16,7 +16,7 @@
         <h2 id="auth-title">Team Workspace</h2>
         
         <div class="auth-form">
-            <input type="email" id="email-input" placeholder="Email Address">
+            <input type="email" id="email-input" placeholder="Email Address" autocomplete="off">
             <input type="password" id="password-input" placeholder="Password">
             
             <button id="email-auth-btn" class="btn primary-btn">Sign In with Email</button>
@@ -33,9 +33,9 @@
         <header class="top-bar">
             <div class="header-title">
                 <div class="input-wrap" id="robot-wrap" data-value="">
-                    <input type="text" id="robot-name-input" placeholder="insert robot name here" oninput="this.parentNode.setAttribute('data-value', this.value)">
+                    <input type="text" id="robot-name-input" placeholder="insert robot name here" autocomplete="off">
                 </div>
-                <span>Workspace</span>
+                <span class="header-static-text">Workspace</span>
             </div>
             
             <nav class="nav-tabs">
@@ -73,7 +73,7 @@
                     </div>
 
                     <div class="chat-input-row">
-                        <input type="text" id="chat-input" placeholder="Message the team...">
+                        <input type="text" id="chat-input" placeholder="Message the team..." autocomplete="off">
                         <button id="chat-send-btn" class="btn primary-btn">Send</button>
                     </div>
                 </div>
