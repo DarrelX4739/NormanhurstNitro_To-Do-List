@@ -34,6 +34,7 @@ const loginContainer = document.getElementById("login-container");
 const appContainer = document.getElementById("app-container");
 const authMessage = document.getElementById("auth-message");
 const robotNameInput = document.getElementById("robot-name-input");
+const robotWrap = document.getElementById("robot-wrap");
 const sectionsWrapper = document.getElementById("sections-wrapper");
 const chatBadge = document.getElementById("chat-badge");
 const chatMessages = document.getElementById("chat-messages");
@@ -140,7 +141,8 @@ function initializeTodoSync() {
         const data = doc.data();
         if (document.activeElement !== robotNameInput) {
             robotNameInput.value = data.robotName || "";
-            robotNameInput.parentNode.dataset.value = data.robotName || "";
+            robotWrap.setAttribute('data-value', data.robotName || "");
+            triggerFailSafeWidth();
         }
         CATEGORIES.forEach(cat => {
             const tbody = document.getElementById(`tbody-${cat}`);
@@ -191,7 +193,7 @@ window.removeTodoRow = function(cat, rowId) {
 };
 
 // ==========================================
-// 4. REAL-TIME CHAT ENGINE (WITH EXTENSIONS)
+// 4. REAL-TIME CHAT ENGINE
 // ==========================================
 
 function initializeChatSync() {
@@ -304,19 +306,16 @@ function renderPinnedMessage(msgId, msg) {
 }
 
 // ==========================================
-// 5. CUSTOM CONTEXT MENU & BOUNDING ENFORCER
+// 5. BOUNDED CONTEXT MENU INTERCEPTOR
 // ==========================================
 
 function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     activeSelectedMsgId = msgId;
     activeSelectedMsgData = msgData;
 
-    // Unhide first so the browser geometry calculates dimensions accurately
     contextMenu.classList.remove("hidden");
 
-    const chatMessagesBox = document.getElementById("chat-messages");
-    const containerRect = chatMessagesBox.getBoundingClientRect();
-    
+    const containerRect = chatMessages.getBoundingClientRect();
     const menuRect = contextMenu.getBoundingClientRect();
     const menuWidth = menuRect.width || 180;
     const menuHeight = menuRect.height || 220;
@@ -324,7 +323,7 @@ function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     let targetLeft = clientX;
     let targetTop = clientY;
 
-    // Boundary containment checks - indents inward to avoid text clipping
+    // Enforce viewport bounding rules - forces container indentation
     if (targetLeft + menuWidth > containerRect.right) {
         targetLeft = containerRect.right - menuWidth - 12;
     }
@@ -443,4 +442,20 @@ chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMsg()
 
 function escapeHTML(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// ==========================================
+// 8. UNCONDITIONAL SHRINKING FAIL-SAFE ENGINE
+// ==========================================
+function triggerFailSafeWidth() {
+    if (robotNameInput && robotWrap) {
+        if (robotNameInput.value.length > 0) {
+            robotWrap.style.width = (robotNameInput.value.length + 1) + "ch";
+        } else {
+            robotWrap.style.width = "auto";
+        }
+    }
+}
+if (robotNameInput) {
+    robotNameInput.addEventListener("input", triggerFailSafeWidth);
 }
