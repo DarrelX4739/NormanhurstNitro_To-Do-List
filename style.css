@@ -293,7 +293,23 @@ td { padding: 8px; }
 .row-delete-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; }
 .row-delete-btn:hover { color: var(--accent-red); }
 
+/* EMPTY STATE BANNER */
+.empty-state-row td {
+    padding: 8px 0;
+}
+.empty-tasks-banner {
+    background-color: var(--bg-input);
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
 /* TASK CREATOR FORM */
+
 .task-creator-row { display: flex; gap: 8px; margin-top: auto; }
 .task-creator-row input { flex: 1; font-size: 0.9rem; }
 .task-creator-row button { padding: 8px 14px; font-size: 0.85rem; flex-shrink: 0; }

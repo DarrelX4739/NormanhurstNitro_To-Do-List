@@ -160,14 +160,38 @@ function initializeTodoSync() {
         
         CATEGORIES.forEach(cat => {
             const tbody = document.getElementById(`tbody-${cat}`);
-            const rows = data[cat] || [];
-            
+            const rawRows = data[cat] || [];
+
+            // Real tasks always get a generated `id` in addNewTask(). Legacy
+            // "placeholder" entries were seeded without an id (and no text) and
+            // therefore can't be deleted by id. Strip them out of the view and
+            // clean them off the server so the empty-state banner can show.
+            const rows = rawRows.filter(row => row && row.id);
+            if (rows.length !== rawRows.length) {
+                TODO_REF.update({ [cat]: rows });
+            }
+
             const activeEl = document.activeElement;
             const activeRowId = activeEl && activeEl.dataset ? activeEl.dataset.rowId : null;
             
             tbody.innerHTML = "";
+
+            if (rows.length === 0) {
+                const emptyTr = document.createElement("tr");
+
+                emptyTr.className = "empty-state-row";
+                emptyTr.innerHTML = `
+                    <td colspan="3">
+                        <div class="empty-tasks-banner">There are no tasks here yet</div>
+                    </td>
+                `;
+                tbody.appendChild(emptyTr);
+                return;
+            }
+
             rows.forEach((row) => {
                 const tr = document.createElement("tr");
+
                 if (row.completed) tr.classList.add("completed");
                 tr.innerHTML = `
                     <td>
