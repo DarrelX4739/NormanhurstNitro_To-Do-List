@@ -126,13 +126,19 @@ function buildTodoUI() {
         div.innerHTML = `
             <h3>${cat}</h3>
             <table>
-                <thead><tr><th>Task</th><th class="status-col">Status</th><th class="action-col"></th></tr></thead>
+                <thead><tr><th>Task</th><th class="priority-col">Priority</th><th class="status-col">Status</th><th class="action-col"></th></tr></thead>
                 <tbody id="tbody-${cat}"></tbody>
             </table>
             <div class="task-creator-row">
                 <input type="text" id="new-task-${cat}" placeholder="Add a new ${cat.toLowerCase()} task..." autocomplete="off">
+                <select id="new-priority-${cat}" class="priority-select">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                </select>
                 <button class="btn secondary-btn" onclick="addNewTask('${cat}')">+ Add</button>
             </div>
+
         `;
         sectionsWrapper.appendChild(div);
         
@@ -181,10 +187,11 @@ function initializeTodoSync() {
 
                 emptyTr.className = "empty-state-row";
                 emptyTr.innerHTML = `
-                    <td colspan="3">
+                    <td colspan="4">
                         <div class="empty-tasks-banner">There are no tasks here yet</div>
                     </td>
                 `;
+
                 tbody.appendChild(emptyTr);
                 return;
             }
@@ -193,6 +200,7 @@ function initializeTodoSync() {
                 const tr = document.createElement("tr");
 
                 if (row.completed) tr.classList.add("completed");
+                const priority = row.priority || "Medium";
                 tr.innerHTML = `
                     <td>
                         <input type="text" class="task-input" data-row-id="${row.id}" 
@@ -200,7 +208,15 @@ function initializeTodoSync() {
                                onblur="updateTodoData('${cat}', '${row.id}', 'task', this.value)"
                                onkeydown="if(event.key === 'Enter') this.blur()">
                     </td>
+                    <td class="priority-col">
+                        <select class="priority-select priority-${priority.toLowerCase()}" onchange="updateTodoData('${cat}', '${row.id}', 'priority', this.value)">
+                            <option value="Low" ${priority === "Low" ? "selected" : ""}>Low</option>
+                            <option value="Medium" ${priority === "Medium" ? "selected" : ""}>Medium</option>
+                            <option value="High" ${priority === "High" ? "selected" : ""}>High</option>
+                        </select>
+                    </td>
                     <td class="status-col"><input type="checkbox" class="task-checkbox" ${row.completed ? "checked" : ""} onchange="updateTodoData('${cat}', '${row.id}', 'completed', this.checked)"></td>
+
                     <td class="action-col"><button class="row-delete-btn" onclick="removeTodoRow('${cat}', '${row.id}')">×</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -228,14 +244,19 @@ window.addNewTask = function(cat) {
     const taskText = inputEl.value.trim();
     if (!taskText) return;
 
+    const priorityEl = document.getElementById(`new-priority-${cat}`);
+    const priority = priorityEl ? priorityEl.value : "Medium";
+
     const rowId = "row-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
     TODO_REF.update({ 
-        [cat]: firebase.firestore.FieldValue.arrayUnion({ id: rowId, task: taskText, completed: false }) 
+        [cat]: firebase.firestore.FieldValue.arrayUnion({ id: rowId, task: taskText, completed: false, priority: priority }) 
     }).then(() => {
         inputEl.value = "";
+        if (priorityEl) priorityEl.value = "Medium";
         inputEl.focus();
     });
 };
+
 
 window.updateTodoData = function(cat, rowId, field, val) {
     TODO_REF.get().then(doc => {
