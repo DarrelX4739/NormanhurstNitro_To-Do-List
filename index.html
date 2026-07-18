@@ -3,183 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Normanhurst Nitro - Workspace</title>
-    
-    <link rel="icon" type="image/png" href="https://th.bing.com/th/id/ODF.hUDxrTj1sIOtZ56NkQsNYg?w=32&h=32&qlt=90&pcl=fffffa&o=6&pid=1.2">
-    
+    <title>Nitro Workspace</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 </head>
 <body>
 
-    <div id="login-container" class="auth-box">
-        <h1>Normanhurst Nitro</h1>
-        <h2 id="auth-title">Team Workspace</h2>
-        
-        <div class="auth-form">
-            <input type="email" id="email-input" placeholder="Email Address" autocomplete="off">
-            <input type="password" id="password-input" placeholder="Password">
-            
-            <button id="email-auth-btn" class="btn primary-btn">Sign In with Email</button>
-            <button id="google-login-btn" class="btn google-btn">Sign In with Google</button>
-            
-            <hr>
-            <p id="toggle-auth-text" class="forgot-text">Don't have an account? <a href="#" id="toggle-auth-link">Create one here</a></p>
-            <p id="forgot-password-wrapper" class="forgot-text">Forgot your password? <a href="#" id="forgot-password-btn">Reset it</a></p>
-            <p id="auth-message" class="message-text"></p>
+    <div id="login-container" class="auth-overlay">
+        <div class="auth-card">
+            <h2>Nitro Workspace Login</h2>
+            <p class="auth-subtitle">Enter team credentials to access the system portal</p>
+            <div class="auth-input-group">
+                <input type="email" id="email-input" placeholder="Team Email Address" autocomplete="off">
+                <input type="password" id="password-input" placeholder="Workspace Access Password">
+            </div>
+            <button id="email-auth-btn" class="btn primary-btn auth-submit">Sign In / Register</button>
+            <div id="auth-message" class="error-text"></div>
         </div>
     </div>
 
-    <div id="app-container" class="hidden">
-        <header class="top-bar">
-            <div class="header-title">
-                <div class="input-wrap" id="robot-wrap" data-value="">
-                    <input type="text" id="robot-name-input" placeholder="insert robot name here" autocomplete="off">
+    <div id="app-container" class="app-dashboard hidden">
+        
+        <div id="announcement-container" class="announcement-stack"></div>
+
+        <header class="app-header">
+            <div class="brand-identity">
+                <span class="logo-icon">🔥</span>
+                <div id="robot-wrap" class="dynamic-title-wrap" data-value="">
+                    <input type="text" id="robot-name-input" placeholder="Name Your Robot..." autocomplete="off">
                 </div>
-                <span class="header-static-text">Workspace</span>
             </div>
             
-<nav class="nav-tabs">
-    <button id="tab-todo-btn" class="tab-btn active" onclick="switchWidget('todo')">To-Do List</button>
-    <button id="tab-chat-btn" class="tab-btn" onclick="switchWidget('chat')">
-        Chat <span id="chat-badge" class="notification-badge hidden"></span>
-    </button>
-    <button id="tab-resources-btn" class="tab-btn" onclick="switchWidget('resources')">Resources</button>
-</nav>
+            <nav class="nav-tabs">
+                <button id="tab-todo-btn" class="tab-btn active" onclick="switchWidget('todo')">To-Do List</button>
+                <button id="tab-chat-btn" class="tab-btn" onclick="switchWidget('chat')">
+                    Chat <span id="chat-badge" class="notification-badge hidden"></span>
+                </button>
+                <button id="tab-resources-btn" class="tab-btn" onclick="switchWidget('resources')">Resources</button>
+            </nav>
 
-            <button id="logout-btn" class="btn danger-btn">Log Out</button>
+            <button id="logout-btn" class="btn outline-btn logout-action">Logout</button>
         </header>
 
-        <div id="announcement-container" class="announcement-container"></div>
-
         <main class="app-viewport">
+            
             <div id="widget-todo" class="widget-content">
                 <div id="sections-wrapper" class="categories-grid"></div>
             </div>
 
             <div id="widget-chat" class="widget-content hidden">
-                <div class="chat-window">
-                    <div class="chat-header">
-                        <h3>Team Feed</h3>
-                        <button id="pins-toggle-btn" class="btn secondary-btn" onclick="togglePinsView()">📌 Pins</button>
+                <div class="chat-layout-container">
+                    <div class="chat-main-stream">
+                        <div id="chat-messages" class="messages-scroll-area"></div>
+                        
+                        <div id="reply-preview-bar" class="reply-context-utility hidden">
+                            <span id="reply-preview-text"></span>
+                            <button onclick="cancelReplyState()" class="close-context-btn">✕</button>
+                        </div>
+                        
+                        <div class="chat-input-bar-row">
+                            <input type="text" id="chat-input" placeholder="Type a message or use /announce to broadcast..." autocomplete="off">
+                            <button id="chat-send-btn" class="btn primary-btn">Send</button>
+                        </div>
                     </div>
-                    <main class="app-viewport">
-    <div id="widget-todo" class="widget-content">
-        <div id="sections-wrapper" class="categories-grid"></div>
-    </div>
-
-    <div id="widget-chat" class="widget-content hidden">
-        </div>
-
-    <div id="widget-resources" class="widget-content hidden">
-        <div class="resource-form-card">
-            <h3>Add New Resource</h3>
-            <div class="form-group">
-                <input type="text" id="res-title" placeholder="Resource Title (e.g., Robot Arm STL, WPILib Docs)" autocomplete="off">
-            </div>
-            
-            <div class="form-group">
-                <label for="res-type" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px; display: block;">Resource Type:</label>
-                <select id="res-type" class="priority-select" onchange="toggleResourceType()">
-                    <option value="link">🌐 Web Link / URL</option>
-                    <option value="file">📎 File Upload (.stl, .png, .jpg)</option>
-                </select>
+                    
+                    <aside class="chat-sidebar-drawer">
+                        <button onclick="togglePinsView()" class="btn secondary-btn full-width-trigger">📌 Toggle Pinned Messages</button>
+                        <div id="pinned-messages-drawer" class="pinned-drawer-content hidden">
+                            <h3>Pinned Board</h3>
+                            <div id="pinned-list" class="pinned-items-list"></div>
+                        </div>
+                    </aside>
+                </div>
             </div>
 
-            <div id="url-input-group" class="form-group">
-                <input type="url" id="res-url" placeholder="https://..." autocomplete="off">
-            </div>
+            <div id="widget-resources" class="widget-content hidden">
+                <div class="resources-layout-wrapper">
+                    <div class="resource-form-card">
+                        <h3>Add New Workspace Resource</h3>
+                        <div class="form-group">
+                            <input type="text" id="res-title" placeholder="Resource Title (e.g., Robot Arm STL, WPILib Docs)" autocomplete="off">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="res-type" class="form-label-context">Resource Type Classification:</label>
+                            <select id="res-type" class="priority-select custom-form-select" onchange="toggleResourceType()">
+                                <option value="link">🌐 Web Link / URL Reference</option>
+                                <option value="file">📎 File Upload Asset (.stl, .png, .jpg)</option>
+                            </select>
+                        </div>
 
-            <div id="file-input-group" class="form-group" style="display: none;">
-                <input type="file" id="res-file" accept=".stl,.png,.jpg,.jpeg,.webp" style="color: var(--text-muted);">
-                <small id="upload-status" class="message-text" style="color: var(--accent-gold);"></small>
-            </div>
+                        <div id="url-input-group" class="form-group">
+                            <input type="url" id="res-url" placeholder="Paste absolute resource URL link reference (https://...)" autocomplete="off">
+                        </div>
 
-            <button type="button" class="btn primary-btn" onclick="submitResource()">Add Resource</button>
-        </div>
+                        <div id="file-input-group" class="form-group" style="display: none;">
+                            <div class="file-upload-zone-box">
+                                <input type="file" id="res-file" accept=".stl,.png,.jpg,.jpeg,.webp">
+                            </div>
+                            <small id="upload-status" class="upload-progress-text"></small>
+                        </div>
 
-        <div class="resources-grid-section" style="margin-top: 20px;">
-            <h3 style="color: var(--accent-red); margin-bottom: 15px; text-transform: uppercase;">Saved Resources</h3>
-            <div id="resources-list" class="resources-grid"></div>
-        </div>
-    </div>
-</main>
-
-                    <div id="pinned-messages-drawer" class="pinned-drawer hidden">
-                        <h4>Pinned Messages</h4>
-                        <div id="pinned-list"></div>
-                    </div>
-
-                    <div id="chat-messages" class="chat-messages-box"></div>
-
-                    <div id="reply-preview-bar" class="reply-preview hidden">
-                        <span id="reply-preview-text">Replying to...</span>
-                        <button onclick="cancelReplyState()" class="cancel-reply-btn">×</button>
+                        <button type="button" class="btn primary-btn form-submit-action-btn" onclick="submitResource()">Upload & Save Resource</button>
                     </div>
 
-                    <div class="chat-input-row">
-                        <input type="text" id="chat-input" placeholder="Message the team... (Use /announce for global banners)" autocomplete="off">
-                        <button id="chat-send-btn" class="btn primary-btn">Send</button>
+                    <div class="resources-grid-section">
+                        <h3 class="section-subheading-label">Saved Repository Elements</h3>
+                        <div id="resources-list" class="resources-grid"></div>
                     </div>
                 </div>
             </div>
+
         </main>
     </div>
 
-    <div id="custom-context-menu" class="context-menu hidden">
-        <div class="emoji-reaction-row">
-            <span class="menu-emoji-btn" onclick="handleMenuReaction('❤️')">❤️</span>
-            <span class="menu-emoji-btn" onclick="handleMenuReaction('😊')">😊</span>
-            <span class="menu-emoji-btn" onclick="handleMenuReaction('🔥')">🔥</span>
-            <span class="menu-emoji-btn" onclick="handleMenuReaction('💀')">💀</span>
-            <span class="menu-emoji-btn" onclick="handleMenuReaction('😭')">😭</span>
+    <div id="custom-context-menu" class="context-dialog-dropdown hidden">
+        <div class="quick-reactions-bar-row">
+            <button onclick="handleMenuReaction('❤️')">❤️</button>
+            <button onclick="handleMenuReaction('😊')">😊</button>
+            <button onclick="handleMenuReaction('🔥')">🔥</button>
+            <button onclick="handleMenuReaction('💀')">💀</button>
+            <button onclick="handleMenuReaction('😭')">😭</button>
         </div>
-        <hr class="menu-divider">
-        <button id="menu-reply-btn">💬 Reply Inline</button>
-        <button id="menu-pin-btn">📌 Pin/Unpin Message</button>
-        <button id="menu-delete-btn" class="danger-item">🗑️ Delete Message</button>
+        <hr class="menu-divider-line">
+        <button id="menu-reply-btn" class="menu-action-item-option">↩ Reply to Message</button>
+        <button id="menu-pin-btn" class="menu-action-item-option">📌 Toggle Pin Status</button>
+        <button id="menu-delete-btn" class="menu-action-item-option hazard-action-text hidden">✕ Delete Message</button>
     </div>
 
-    <script src="app.js"></script>
-    <div id="widget-resources" class="widget-container">
-  <div class="widget-header">
-    <h2>📁 Team Resources & Models</h2>
-    <p>Share useful links, reference images, and CAD (.stl) files.</p>
-  </div>
-
-  <div class="resource-form-card">
-    <h3>Add New Resource</h3>
-    <div class="form-group">
-      <input type="text" id="res-title" placeholder="Resource Title (e.g., Robot Arm STL, WPILib Docs)" required>
-    </div>
-    
-    <div class="form-group">
-      <label for="res-type">Resource Type:</label>
-      <select id="res-type" onchange="toggleResourceType()">
-        <option value="link">🌐 Web Link / URL</option>
-        <option value="file">📎 File Upload (.stl, .png, .jpg)</option>
-      </select>
-    </div>
-
-    <div id="url-input-group" class="form-group">
-      <input type="url" id="res-url" placeholder="https://...">
-    </div>
-
-    <div id="file-input-group" class="form-group" style="display: none;">
-      <input type="file" id="res-file" accept=".stl,.png,.jpg,.jpeg,.webp">
-      <small id="upload-status" class="status-text"></small>
-    </div>
-
-    <button type="button" class="btn-primary" onclick="submitResource()">Add Resource</button>
-  </div>
-
-  <div class="resources-grid-section">
-    <h3>Saved Resources</h3>
-    <div id="resources-list" class="resources-grid">
-      </div>
-  </div>
-</div>
+    <script src="App.js"></script>
 </body>
 </html>
