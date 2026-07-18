@@ -1,5 +1,5 @@
 // ==========================================
-// 1. PASTE YOUR FIREBASE API DETAILS HERE
+// 1. FIREBASE INITIALIZATION & COLLECTION REFERENCES
 // ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyBRTH0niMDYdcbYzLeJmFYxJdr5clmlWGg",
@@ -27,11 +27,10 @@ let highestMessageTimestamp = 0;
 let pressTimer = null;
 let activeReplyTarget = null; 
 
-// Track active tracking structures for stackable banners
 let dismissedAnnouncements = new Set();
 let activeAnnouncementTimers = {};
 
-// DOM Selectors
+// DOM Node Target Selections
 const loginContainer = document.getElementById("login-container");
 const appContainer = document.getElementById("app-container");
 const authMessage = document.getElementById("auth-message");
@@ -57,7 +56,7 @@ let activeSelectedMsgId = null;
 let activeSelectedMsgData = null;
 
 // ==========================================
-// 2. AUTH ROUTING HOOKS
+// 2. AUTHENTICATION INTEGRITY ENGINE
 // ==========================================
 auth.onAuthStateChanged((user) => {
     if (user) {
@@ -70,28 +69,25 @@ auth.onAuthStateChanged((user) => {
         initializeTodoSync();
         initializeChatSync();
         initializeAnnouncementSync();
-        initializeResourceSync(); // Hook up resources real-time system
+        initializeResourceSync();
     } else {
         loginContainer.classList.remove("hidden");
         appContainer.classList.add("hidden");
     }
 });
 
-// UPGRADED MULTI-WIDGET TAB SWITCHER ENGINE
+// MULTI-WIDGET VIEWPORT TAB ROUTER
 window.switchWidget = function(targetWidget) {
     currentWidget = targetWidget;
     
-    // Remove active state classes across all tab buttons
     document.getElementById("tab-todo-btn").classList.remove("active");
     document.getElementById("tab-chat-btn").classList.remove("active");
     document.getElementById("tab-resources-btn").classList.remove("active");
     
-    // Hide all viewports cleanly
     document.getElementById("widget-todo").classList.add("hidden");
     document.getElementById("widget-chat").classList.add("hidden");
     document.getElementById("widget-resources").classList.add("hidden");
 
-    // Route view to selected layout state targets
     if (targetWidget === 'todo') {
         document.getElementById("tab-todo-btn").classList.add("active");
         document.getElementById("widget-todo").classList.remove("hidden");
@@ -129,7 +125,7 @@ document.getElementById("email-auth-btn").addEventListener("click", () => {
 document.getElementById("logout-btn").addEventListener("click", () => auth.signOut());
 
 // ==========================================
-// 3. TO-DO BOARD SYNC ENGINE
+// 3. TO-DO SYNCHRONIZATION RUNTIME
 // ==========================================
 function buildTodoUI() {
     sectionsWrapper.innerHTML = "";
@@ -192,11 +188,7 @@ function initializeTodoSync() {
             if (rows.length === 0) {
                 const emptyTr = document.createElement("tr");
                 emptyTr.className = "empty-state-row";
-                emptyTr.innerHTML = `
-                    <td colspan="4">
-                        <div class="empty-tasks-banner">There are no tasks here yet</div>
-                    </td>
-                `;
+                emptyTr.innerHTML = `<td colspan="4"><div class="empty-tasks-banner">There are no tasks here yet</div></td>`;
                 tbody.appendChild(emptyTr);
                 return;
             }
@@ -284,7 +276,7 @@ window.removeTodoRow = function(cat, rowId) {
 };
 
 // ==========================================
-// 4. REAL-TIME CHAT ENGINE
+// 4. WORKSPACE COMMUNICATIONS STREAM ENGINE
 // ==========================================
 function initializeChatSync() {
     CHAT_REF.orderBy("timestamp", "asc").onSnapshot((snapshot) => {
@@ -330,9 +322,7 @@ function renderChatMessage(msgId, msg) {
 
     Object.keys(reactionMap).forEach(user => {
         const chosenEmoji = reactionMap[user];
-        if (emojiCounts[chosenEmoji] !== undefined) {
-            emojiCounts[chosenEmoji]++;
-        }
+        if (emojiCounts[chosenEmoji] !== undefined) emojiCounts[chosenEmoji]++;
     });
 
     let reactionsHTML = "";
@@ -349,29 +339,19 @@ function renderChatMessage(msgId, msg) {
 
     let replyHTML = "";
     if (msg.replyTo) {
-        replyHTML = `
-            <div class="inline-reply-box">
-                <span class="reply-sender-label">↩ ${msg.replyTo.sender.split('@')[0]}</span> 
-                ${escapeHTML(msg.replyTo.text)}
-            </div>
-        `;
+        replyHTML = `<div class="inline-reply-box"><span class="reply-sender-label">↩ ${msg.replyTo.sender.split('@')[0]}</span>${escapeHTML(msg.replyTo.text)}</div>`;
     }
 
     wrapper.innerHTML = `
         <div class="msg-meta">${msg.sender} ${msg.pinned ? '📌' : ''}</div>
         ${replyHTML}
-        <div class="msg-bubble" id="bubble-${msgId}">
-            ${escapeHTML(msg.text)}
-        </div>
-        <div class="msg-addons">
-            <div class="reactions-row">${reactionsHTML}</div>
-        </div>
+        <div class="msg-bubble" id="bubble-${msgId}">${escapeHTML(msg.text)}</div>
+        <div class="msg-addons"><div class="reactions-row">${reactionsHTML}</div></div>
     `;
 
     chatMessages.appendChild(wrapper);
 
     const bubbleElement = document.getElementById(`bubble-${msgId}`);
-    
     bubbleElement.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         openMessageMenu(msgId, msg, isOutgoing, msg.pinned, e.clientX, e.clientY);
@@ -383,7 +363,6 @@ function renderChatMessage(msgId, msg) {
             openMessageMenu(msgId, msg, isOutgoing, msg.pinned, touch.clientX, touch.clientY);
         }, 600);
     });
-    
     bubbleElement.addEventListener("touchend", () => clearTimeout(pressTimer));
 }
 
@@ -395,7 +374,7 @@ function renderPinnedMessage(msgId, msg) {
 }
 
 // ==========================================
-// 5. STACKABLE 15-MINUTE EXPIRY ANNOUNCEMENT SYNC ENGINE
+// 5. TIMEOUT BANNER SYSTEM
 // ==========================================
 function initializeAnnouncementSync() {
     ANNOUNCEMENTS_COLLECTION.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
@@ -406,7 +385,6 @@ function initializeAnnouncementSync() {
         snapshot.forEach((doc) => {
             const id = doc.id;
             const data = doc.data();
-
             if (dismissedAnnouncements.has(id)) return;
 
             const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : data.timestamp) : Date.now();
@@ -423,7 +401,6 @@ function initializeAnnouncementSync() {
                 `;
                 
                 announcementContainer.appendChild(banner);
-
                 const remainingTime = fifteenMinutes - difference;
                 activeAnnouncementTimers[id] = setTimeout(() => {
                     const el = document.getElementById(`banner-${id}`);
@@ -441,7 +418,7 @@ window.manualDismissBanner = function(announcementId) {
 };
 
 // ==========================================
-// 6. CONTEXT MENU & REACTIONS
+// 6. CONTEXT HANDLERS
 // ==========================================
 function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     activeSelectedMsgId = msgId;
@@ -464,15 +441,8 @@ function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     contextMenu.style.left = `${targetLeft + window.scrollX}px`;
     contextMenu.style.top = `${targetTop + window.scrollY}px`;
 
-    menuReplyBtn.onclick = () => {
-        setupReplyState(msgId, msgData);
-        closeCustomMenu();
-    };
-
-    menuPinBtn.onclick = () => {
-        CHAT_REF.doc(msgId).update({ pinned: !isPinned });
-        closeCustomMenu();
-    };
+    menuReplyBtn.onclick = () => { setupReplyState(msgId, msgData); closeCustomMenu(); };
+    menuPinBtn.onclick = () => { CHAT_REF.doc(msgId).update({ pinned: !isPinned }); closeCustomMenu(); };
 
     if (isOwner) {
         menuDeleteBtn.classList.remove("hidden");
@@ -485,13 +455,8 @@ function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     }
 }
 
-function closeCustomMenu() {
-    contextMenu.classList.add("hidden");
-}
-
-document.addEventListener("click", (e) => {
-    if (!contextMenu.contains(e.target)) closeCustomMenu();
-});
+function closeCustomMenu() { contextMenu.classList.add("hidden"); }
+document.addEventListener("click", (e) => { if (!contextMenu.contains(e.target)) closeCustomMenu(); });
 
 window.handleMenuReaction = function(emoji) {
     if (!activeSelectedMsgId) return;
@@ -504,38 +469,21 @@ window.toggleReactionDirectly = function(msgId, emoji) {
         if (!doc.exists) return;
         const data = doc.data();
         let map = data.reactionsMap || {};
-
-        if (map[currentUserEmail] === emoji) {
-            delete map[currentUserEmail]; 
-        } else {
-            map[currentUserEmail] = emoji; 
-        }
+        if (map[currentUserEmail] === emoji) { delete map[currentUserEmail]; } 
+        else { map[currentUserEmail] = emoji; }
         CHAT_REF.doc(msgId).update({ reactionsMap: map });
     });
 };
 
-// ==========================================
-// 7. REPLY HANDLING STATES
-// ==========================================
 function setupReplyState(msgId, msgData) {
-    activeReplyTarget = {
-        id: msgId,
-        sender: msgData.sender,
-        text: msgData.text
-    };
+    activeReplyTarget = { id: msgId, sender: msgData.sender, text: msgData.text };
     replyPreviewText.innerHTML = `Replying to <strong>${msgData.sender.split('@')[0]}</strong>: "<em>${escapeHTML(msgData.text)}</em>"`;
     replyPreviewBar.classList.remove("hidden");
     chatInput.focus();
 }
 
-window.cancelReplyState = function() {
-    activeReplyTarget = null;
-    replyPreviewBar.classList.add("hidden");
-};
+window.cancelReplyState = function() { activeReplyTarget = null; replyPreviewBar.classList.add("hidden"); };
 
-// ==========================================
-// 8. MESSAGE DISPATCH TRANSMISSION
-// ==========================================
 function sendMsg() {
     const text = chatInput.value.trim();
     if (!text) return;
@@ -547,9 +495,7 @@ function sendMsg() {
             ANNOUNCEMENTS_COLLECTION.add({
                 text: announcementContent,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                cancelReplyState();
-            }).catch(err => console.error("Announcement addition fail: ", err));
+            }).then(() => { cancelReplyState(); }).catch(err => console.error(err));
         }
         return; 
     }
@@ -561,14 +507,9 @@ function sendMsg() {
         pinned: false,
         reactionsMap: {}
     };
+    if (activeReplyTarget) payload.replyTo = activeReplyTarget;
 
-    if (activeReplyTarget) {
-        payload.replyTo = activeReplyTarget;
-    }
-
-    CHAT_REF.add(payload)
-        .then(() => { cancelReplyState(); })
-        .catch(err => console.error("Message error: ", err));
+    CHAT_REF.add(payload).then(() => { cancelReplyState(); }).catch(err => console.error(err));
 }
 
 chatSendBtn.addEventListener("click", sendMsg);
@@ -579,26 +520,16 @@ function escapeHTML(str) {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// ==========================================
-// 9. FAIL-SAFE WIDTH ENGINE
-// ==========================================
 function triggerFailSafeWidth() {
     if (robotNameInput && robotWrap) {
-        if (robotNameInput.value.length > 0) {
-            robotWrap.style.width = (robotNameInput.value.length + 1) + "ch";
-        } else {
-            robotWrap.style.width = "auto";
-        }
+        robotWrap.style.width = robotNameInput.value.length > 0 ? (robotNameInput.value.length + 1) + "ch" : "auto";
     }
 }
-if (robotNameInput) {
-    robotNameInput.addEventListener("input", triggerFailSafeWidth);
-}
+if (robotNameInput) robotNameInput.addEventListener("input", triggerFailSafeWidth);
 
 // ==========================================
-// 10. INTEGRATED RESOURCES WIDGET SYSTEM
+// 7. PRODUCTION RESOURCES CORE LOGIC ENGINE
 // ==========================================
-
 window.toggleResourceType = function() {
     const type = document.getElementById("res-type").value;
     const urlGroup = document.getElementById("url-input-group");
@@ -619,7 +550,7 @@ window.submitResource = async function() {
     const statusText = document.getElementById("upload-status");
     
     if (!title) {
-        alert("Please enter a title for the resource!");
+        alert("Please provide a name/title descriptor for this asset!");
         return;
     }
 
@@ -631,7 +562,7 @@ window.submitResource = async function() {
         if (type === "link") {
             fileUrl = document.getElementById("res-url").value.trim();
             if (!fileUrl) {
-                alert("Please paste a valid URL!");
+                alert("Please add a destination URL path framework link!");
                 return;
             }
             fileCategory = "link";
@@ -641,7 +572,7 @@ window.submitResource = async function() {
             const file = fileInput.files[0];
             
             if (!file) {
-                alert("Please select a file to upload!");
+                alert("Please drop or choose an active document data asset!");
                 return;
             }
 
@@ -656,7 +587,7 @@ window.submitResource = async function() {
                 fileCategory = "file";
             }
 
-            statusText.innerText = "⏳ Uploading to Firebase Storage... Please wait.";
+            statusText.innerText = "⏳ Direct pipeline routing payload streaming to Firebase Storage...";
             
             const storageRef = firebase.storage().ref(`resources/${Date.now()}_${fileName}`);
             const uploadTask = await storageRef.put(file);
@@ -677,11 +608,11 @@ window.submitResource = async function() {
         document.getElementById("res-url").value = "";
         document.getElementById("res-file").value = "";
         statusText.innerText = "";
-        alert("🎉 Resource added successfully!");
+        alert("🎉 Repository synchronization successfully validated!");
 
     } catch (error) {
-        console.error("Error adding resource: ", error);
-        alert("Error uploading resource: " + error.message);
+        console.error(error);
+        alert("Pipeline error payload: " + error.message);
         statusText.innerText = "";
     }
 };
@@ -692,9 +623,8 @@ function initializeResourceSync() {
         if (!container) return;
         
         container.innerHTML = "";
-        
         if (snapshot.empty) {
-            container.innerHTML = `<p style="color: var(--text-muted); grid-column: 1/-1; text-align: center; margin-top: 20px;">No resources added yet. Be the first to share something!</p>`;
+            container.innerHTML = `<p style="color: var(--text-muted); grid-column: 1/-1; text-align: center; padding: 40px 0;">No resources added yet. Be the first to share something!</p>`;
             return;
         }
 
@@ -704,26 +634,25 @@ function initializeResourceSync() {
             card.className = `resource-card ${data.type}-card`;
 
             let badgeOrPreview = "";
-            
             if (data.type === "image") {
                 badgeOrPreview = `<img src="${data.url}" alt="${data.title}" class="resource-preview-img" loading="lazy">`;
             } else if (data.type === "stl") {
                 badgeOrPreview = `<span class="stl-badge">🧊 3D CAD MODEL (.STL)</span>`;
             } else {
-                badgeOrPreview = `<span class="stl-badge" style="color:var(--accent-blue); background:rgba(74,144,226,0.15);">🌐 WEB LINK</span>`;
+                badgeOrPreview = `<span class="stl-badge">🌐 WEB LINK</span>`;
             }
 
             card.innerHTML = `
                 <div>
                     ${badgeOrPreview}
                     <h4 class="resource-title">${escapeHTML(data.title)}</h4>
-                    <p class="resource-meta">${data.fileName !== data.title ? escapeHTML(data.fileName) : 'External Link'}</p>
+                    <p class="resource-meta">${data.fileName !== data.title ? escapeHTML(data.fileName) : 'External URL Data reference'}</p>
                 </div>
                 <div class="resource-actions">
                     <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="btn btn-link">
-                        ${data.type === 'link' ? '🔗 Open Link' : '⬇️ Download / View'}
+                        ${data.type === 'link' ? '🔗 Open Link' : '⬇️ Download Asset'}
                     </a>
-                    <button onclick="deleteResource('${doc.id}')" class="btn btn-delete" title="Delete Resource">✕</button>
+                    <button onclick="deleteResource('${doc.id}')" class="btn btn-delete" title="Purge Record">✕</button>
                 </div>
             `;
             container.appendChild(card);
@@ -732,12 +661,11 @@ function initializeResourceSync() {
 }
 
 window.deleteResource = async function(docId) {
-    if (confirm("Are you sure you want to remove this resource?")) {
+    if (confirm("Purge asset registration record entry from cloud storage arrays?")) {
         try {
             await resourcesCollection.doc(docId).delete();
         } catch (error) {
-            console.error("Error deleting resource: ", error);
-            alert("Could not delete: " + error.message);
+            alert("Deletion fault: " + error.message);
         }
     }
 };
