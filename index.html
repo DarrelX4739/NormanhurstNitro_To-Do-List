@@ -3,38 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nitro Workspace</title>
+    <title>Normanhurst Nitro - Workspace</title>
+    
+    <link rel="icon" type="image/png" href="https://th.bing.com/th/id/ODF.hUDxrTj1sIOtZ56NkQsNYg?w=32&h=32&qlt=90&pcl=fffffa&o=6&pid=1.2">
+    
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-    <div id="login-container" class="auth-overlay">
-        <div class="auth-card">
-            <h2>Nitro Workspace</h2>
-            <p class="auth-subtitle">Enter team credentials. New users will be automatically registered.</p>
-            <div class="auth-input-group">
-                <input type="email" id="email-input" placeholder="Team Email Address" autocomplete="off">
-                <input type="password" id="password-input" placeholder="Workspace Access Password">
-            </div>
-            <button id="email-auth-btn" class="btn primary-btn auth-submit">Sign In / Join Team</button>
-            <div id="auth-message" class="error-text"></div>
+    <div id="login-container" class="auth-box">
+        <h1>Normanhurst Nitro</h1>
+        <h2 id="auth-title">Team Workspace</h2>
+        
+        <div class="auth-form">
+            <input type="email" id="email-input" placeholder="Email Address" autocomplete="off">
+            <input type="password" id="password-input" placeholder="Password">
+            
+            <button id="email-auth-btn" class="btn primary-btn">Sign In with Email</button>
+            <button id="google-login-btn" class="btn google-btn">Sign In with Google</button>
+            
+            <hr>
+            <p id="toggle-auth-text" class="forgot-text">Don't have an account? <a href="#" id="toggle-auth-link">Create one here</a></p>
+            <p id="forgot-password-wrapper" class="forgot-text">Forgot your password? <a href="#" id="forgot-password-btn">Reset it</a></p>
+            <p id="auth-message" class="message-text"></p>
         </div>
     </div>
 
-    <div id="app-container" class="app-dashboard hidden">
-        
-        <div id="announcement-container" class="announcement-stack"></div>
-
-        <header class="app-header">
-            <div class="brand-identity">
-                <span class="logo-icon">🔥</span>
-                <div id="robot-wrap" class="dynamic-title-wrap" data-value="">
-                    <input type="text" id="robot-name-input" placeholder="Name Your Robot..." autocomplete="off">
+    <div id="app-container" class="hidden">
+        <header class="top-bar">
+            <div class="header-title">
+                <div class="input-wrap" id="robot-wrap" data-value="">
+                    <input type="text" id="robot-name-input" placeholder="insert robot name here" autocomplete="off">
                 </div>
+                <span class="header-static-text">Workspace</span>
             </div>
             
             <nav class="nav-tabs">
@@ -42,98 +46,60 @@
                 <button id="tab-chat-btn" class="tab-btn" onclick="switchWidget('chat')">
                     Chat <span id="chat-badge" class="notification-badge hidden"></span>
                 </button>
-                <button id="tab-resources-btn" class="tab-btn" onclick="switchWidget('resources')">Resources</button>
             </nav>
 
-            <button id="logout-btn" class="btn outline-btn logout-action">Logout</button>
+            <button id="logout-btn" class="btn danger-btn">Log Out</button>
         </header>
 
+        <div id="announcement-container" class="announcement-container"></div>
+
         <main class="app-viewport">
-            
             <div id="widget-todo" class="widget-content">
                 <div id="sections-wrapper" class="categories-grid"></div>
             </div>
 
             <div id="widget-chat" class="widget-content hidden">
-                <div class="chat-layout-container">
-                    <div class="chat-main-stream">
-                        <div id="chat-messages" class="messages-scroll-area"></div>
-                        
-                        <div id="reply-preview-bar" class="reply-context-utility hidden">
-                            <span id="reply-preview-text"></span>
-                            <button onclick="cancelReplyState()" class="close-context-btn">✕</button>
-                        </div>
-                        
-                        <div class="chat-input-bar-row">
-                            <input type="text" id="chat-input" placeholder="Type a message or use /announce to broadcast..." autocomplete="off">
-                            <button id="chat-send-btn" class="btn primary-btn">Send</button>
-                        </div>
-                    </div>
-                    
-                    <aside class="chat-sidebar-drawer">
-                        <button onclick="togglePinsView()" class="btn secondary-btn full-width-trigger">📌 Toggle Pinned Messages</button>
-                        <div id="pinned-messages-drawer" class="pinned-drawer-content hidden">
-                            <h3>Pinned Board</h3>
-                            <div id="pinned-list" class="pinned-items-list"></div>
-                        </div>
-                    </aside>
-                </div>
-            </div>
-
-            <div id="widget-resources" class="widget-content hidden">
-                <div class="resources-layout-wrapper">
-                    <div class="resource-form-card">
-                        <h3>Add New Workspace Resource</h3>
-                        <div class="resource-form-group">
-                            <input type="text" id="res-title" placeholder="Resource Title (e.g., Robot Arm STL, WPILib Docs)" autocomplete="off">
-                        </div>
-                        
-                        <div class="resource-form-group">
-                            <label for="res-type" class="resource-label-context">Resource Type Classification:</label>
-                            <select id="res-type" class="resource-custom-select" onchange="toggleResourceType()">
-                                <option value="link">🌐 Web Link / URL Reference</option>
-                                <option value="file">📎 File Upload Asset (.stl, .png, .jpg)</option>
-                            </select>
-                        </div>
-
-                        <div id="url-input-group" class="resource-form-group">
-                            <input type="url" id="res-url" placeholder="Paste absolute resource URL link reference (https://...)" autocomplete="off">
-                        </div>
-
-                        <div id="file-input-group" class="resource-form-group" style="display: none;">
-                            <div class="resource-upload-zone">
-                                <input type="file" id="res-file" accept=".stl,.png,.jpg,.jpeg,.webp">
-                            </div>
-                            <small id="upload-status" class="resource-progress-text"></small>
-                        </div>
-
-                        <button type="button" class="btn primary-btn" onclick="submitResource()">Upload & Save Resource</button>
+                <div class="chat-window">
+                    <div class="chat-header">
+                        <h3>Team Feed</h3>
+                        <button id="pins-toggle-btn" class="btn secondary-btn" onclick="togglePinsView()">📌 Pins</button>
                     </div>
 
-                    <div class="resources-grid-section">
-                        <h3 class="resource-section-label">Saved Repository Elements</h3>
-                        <div id="resources-list" class="resources-grid"></div>
+                    <div id="pinned-messages-drawer" class="pinned-drawer hidden">
+                        <h4>Pinned Messages</h4>
+                        <div id="pinned-list"></div>
+                    </div>
+
+                    <div id="chat-messages" class="chat-messages-box"></div>
+
+                    <div id="reply-preview-bar" class="reply-preview hidden">
+                        <span id="reply-preview-text">Replying to...</span>
+                        <button onclick="cancelReplyState()" class="cancel-reply-btn">×</button>
+                    </div>
+
+                    <div class="chat-input-row">
+                        <input type="text" id="chat-input" placeholder="Message the team... (Use /announce for global banners)" autocomplete="off">
+                        <button id="chat-send-btn" class="btn primary-btn">Send</button>
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
 
-    <div id="custom-context-menu" class="context-dialog-dropdown hidden">
-        <div class="quick-reactions-bar-row">
-            <button onclick="handleMenuReaction('❤️')">❤️</button>
-            <button onclick="handleMenuReaction('😊')">😊</button>
-            <button onclick="handleMenuReaction('🔥')">🔥</button>
-            <button onclick="handleMenuReaction('💀')">💀</button>
-            <button onclick="handleMenuReaction('😭')">😭</button>
+    <div id="custom-context-menu" class="context-menu hidden">
+        <div class="emoji-reaction-row">
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('❤️')">❤️</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('😊')">😊</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('🔥')">🔥</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('💀')">💀</span>
+            <span class="menu-emoji-btn" onclick="handleMenuReaction('😭')">😭</span>
         </div>
-        <hr class="menu-divider-line">
-        <button id="menu-reply-btn" class="menu-action-item-option">↩ Reply to Message</button>
-        <button id="menu-pin-btn" class="menu-action-item-option">📌 Toggle Pin Status</button>
-        <button id="menu-delete-btn" class="menu-action-item-option hazard-action-text hidden">✕ Delete Message</button>
+        <hr class="menu-divider">
+        <button id="menu-reply-btn">💬 Reply Inline</button>
+        <button id="menu-pin-btn">📌 Pin/Unpin Message</button>
+        <button id="menu-delete-btn" class="danger-item">🗑️ Delete Message</button>
     </div>
 
-    <script src="App.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
