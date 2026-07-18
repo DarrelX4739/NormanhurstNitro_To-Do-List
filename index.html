@@ -101,5 +101,43 @@
     </div>
 
     <script src="app.js"></script>
+    <div id="widget-resources" class="widget-container">
+  <div class="widget-header">
+    <h2>📁 Team Resources & Models</h2>
+    <p>Share useful links, reference images, and CAD (.stl) files.</p>
+  </div>
+
+  <div class="resource-form-card">
+    <h3>Add New Resource</h3>
+    <div class="form-group">
+      <input type="text" id="res-title" placeholder="Resource Title (e.g., Robot Arm STL, WPILib Docs)" required>
+    </div>
+    
+    <div class="form-group">
+      <label for="res-type">Resource Type:</label>
+      <select id="res-type" onchange="toggleResourceType()">
+        <option value="link">🌐 Web Link / URL</option>
+        <option value="file">📎 File Upload (.stl, .png, .jpg)</option>
+      </select>
+    </div>
+
+    <div id="url-input-group" class="form-group">
+      <input type="url" id="res-url" placeholder="https://...">
+    </div>
+
+    <div id="file-input-group" class="form-group" style="display: none;">
+      <input type="file" id="res-file" accept=".stl,.png,.jpg,.jpeg,.webp">
+      <small id="upload-status" class="status-text"></small>
+    </div>
+
+    <button type="button" class="btn-primary" onclick="submitResource()">Add Resource</button>
+  </div>
+
+  <div class="resources-grid-section">
+    <h3>Saved Resources</h3>
+    <div id="resources-list" class="resources-grid">
+      </div>
+  </div>
+</div>
 </body>
 </html>
