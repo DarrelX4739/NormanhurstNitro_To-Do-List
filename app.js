@@ -18,6 +18,7 @@ const CATEGORIES = ["Design", "Mechanical", "Electrical", "Software", "Media"];
 const TODO_REF = db.collection("nitro_todo").doc("season_2026");
 const CHAT_REF = db.collection("nitro_workspace_chat");
 const ANNOUNCEMENTS_COLLECTION = db.collection("nitro_announcements");
+const resourcesCollection = db.collection("resources");
 
 let currentUserEmail = "";
 let currentWidget = "todo";
@@ -69,19 +70,28 @@ auth.onAuthStateChanged((user) => {
         initializeTodoSync();
         initializeChatSync();
         initializeAnnouncementSync();
+        initializeResourceSync(); // Hook up resources real-time system
     } else {
         loginContainer.classList.remove("hidden");
         appContainer.classList.add("hidden");
     }
 });
 
+// UPGRADED MULTI-WIDGET TAB SWITCHER ENGINE
 window.switchWidget = function(targetWidget) {
     currentWidget = targetWidget;
+    
+    // Remove active state classes across all tab buttons
     document.getElementById("tab-todo-btn").classList.remove("active");
     document.getElementById("tab-chat-btn").classList.remove("active");
+    document.getElementById("tab-resources-btn").classList.remove("active");
+    
+    // Hide all viewports cleanly
     document.getElementById("widget-todo").classList.add("hidden");
     document.getElementById("widget-chat").classList.add("hidden");
+    document.getElementById("widget-resources").classList.add("hidden");
 
+    // Route view to selected layout state targets
     if (targetWidget === 'todo') {
         document.getElementById("tab-todo-btn").classList.add("active");
         document.getElementById("widget-todo").classList.remove("hidden");
@@ -94,6 +104,9 @@ window.switchWidget = function(targetWidget) {
         chatBadge.classList.add("hidden");
         
         setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
+    } else if (targetWidget === 'resources') {
+        document.getElementById("tab-resources-btn").classList.add("active");
+        document.getElementById("widget-resources").classList.remove("hidden");
     }
 };
 
@@ -138,7 +151,6 @@ function buildTodoUI() {
                 </select>
                 <button class="btn secondary-btn" onclick="addNewTask('${cat}')">+ Add</button>
             </div>
-
         `;
         sectionsWrapper.appendChild(div);
         
@@ -167,11 +179,6 @@ function initializeTodoSync() {
         CATEGORIES.forEach(cat => {
             const tbody = document.getElementById(`tbody-${cat}`);
             const rawRows = data[cat] || [];
-
-            // Real tasks always get a generated `id` in addNewTask(). Legacy
-            // "placeholder" entries were seeded without an id (and no text) and
-            // therefore can't be deleted by id. Strip them out of the view and
-            // clean them off the server so the empty-state banner can show.
             const rows = rawRows.filter(row => row && row.id);
             if (rows.length !== rawRows.length) {
                 TODO_REF.update({ [cat]: rows });
@@ -184,21 +191,18 @@ function initializeTodoSync() {
 
             if (rows.length === 0) {
                 const emptyTr = document.createElement("tr");
-
                 emptyTr.className = "empty-state-row";
                 emptyTr.innerHTML = `
                     <td colspan="4">
                         <div class="empty-tasks-banner">There are no tasks here yet</div>
                     </td>
                 `;
-
                 tbody.appendChild(emptyTr);
                 return;
             }
 
             rows.forEach((row) => {
                 const tr = document.createElement("tr");
-
                 if (row.completed) tr.classList.add("completed");
                 const priority = row.priority || "Medium";
                 tr.innerHTML = `
@@ -216,7 +220,6 @@ function initializeTodoSync() {
                         </select>
                     </td>
                     <td class="status-col"><input type="checkbox" class="task-checkbox" ${row.completed ? "checked" : ""} onchange="updateTodoData('${cat}', '${row.id}', 'completed', this.checked)"></td>
-
                     <td class="action-col"><button class="row-delete-btn" onclick="removeTodoRow('${cat}', '${row.id}')">×</button></td>
                 `;
                 tbody.appendChild(tr);
@@ -257,7 +260,6 @@ window.addNewTask = function(cat) {
     });
 };
 
-
 window.updateTodoData = function(cat, rowId, field, val) {
     TODO_REF.get().then(doc => {
         if (!doc.exists) return;
@@ -288,7 +290,6 @@ function initializeChatSync() {
     CHAT_REF.orderBy("timestamp", "asc").onSnapshot((snapshot) => {
         chatMessages.innerHTML = "";
         pinnedList.innerHTML = "";
-        
         let localHighestTimestamp = 0;
 
         snapshot.forEach((doc) => {
@@ -398,17 +399,14 @@ function renderPinnedMessage(msgId, msg) {
 // ==========================================
 function initializeAnnouncementSync() {
     ANNOUNCEMENTS_COLLECTION.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
-        // Clear all running local timeouts to rebuild clean active states
         Object.values(activeAnnouncementTimers).forEach(clearTimeout);
         activeAnnouncementTimers = {};
-
         announcementContainer.innerHTML = "";
 
         snapshot.forEach((doc) => {
             const id = doc.id;
             const data = doc.data();
 
-            // Skip rendering if current user has already dismissed this banner locally
             if (dismissedAnnouncements.has(id)) return;
 
             const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : data.timestamp) : Date.now();
@@ -424,10 +422,8 @@ function initializeAnnouncementSync() {
                     <button class="announcement-close-btn" onclick="manualDismissBanner('${id}')">&times;</button>
                 `;
                 
-                // Append inside stacking container wrapper
                 announcementContainer.appendChild(banner);
 
-                // Set independent life timer per single banner element instance
                 const remainingTime = fifteenMinutes - difference;
                 activeAnnouncementTimers[id] = setTimeout(() => {
                     const el = document.getElementById(`banner-${id}`);
@@ -450,7 +446,6 @@ window.manualDismissBanner = function(announcementId) {
 function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     activeSelectedMsgId = msgId;
     activeSelectedMsgData = msgData;
-
     contextMenu.classList.remove("hidden");
 
     const containerRect = chatMessages.getBoundingClientRect();
@@ -515,7 +510,6 @@ window.toggleReactionDirectly = function(msgId, emoji) {
         } else {
             map[currentUserEmail] = emoji; 
         }
-
         CHAT_REF.doc(msgId).update({ reactionsMap: map });
     });
 };
@@ -547,7 +541,6 @@ function sendMsg() {
     if (!text) return;
     chatInput.value = "";
 
-    // Command Intercept Collection Engine
     if (text.startsWith('/announce ')) {
         const announcementContent = text.substring(10).trim();
         if (announcementContent) {
@@ -601,159 +594,150 @@ function triggerFailSafeWidth() {
 if (robotNameInput) {
     robotNameInput.addEventListener("input", triggerFailSafeWidth);
 }
+
 // ==========================================
-// RESOURCES WIDGET LOGIC
+// 10. INTEGRATED RESOURCES WIDGET SYSTEM
 // ==========================================
 
-const resourcesCollection = db.collection("resources"); // Assumes 'db' is your Firestore instance
-
-// 1. Toggle between Link and File upload inputs
-function toggleResourceType() {
-  const type = document.getElementById("res-type").value;
-  const urlGroup = document.getElementById("url-input-group");
-  const fileGroup = document.getElementById("file-input-group");
-  
-  if (type === "file") {
-    urlGroup.style.display = "none";
-    fileGroup.style.display = "block";
-  } else {
-    urlGroup.style.display = "block";
-    fileGroup.style.display = "none";
-  }
-}
-
-// 2. Handle Form Submission & Firebase Saving
-async function submitResource() {
-  const title = document.getElementById("res-title").value.trim();
-  const type = document.getElementById("res-type").value;
-  const statusText = document.getElementById("upload-status");
-  
-  if (!title) {
-    alert("Please enter a title for the resource!");
-    return;
-  }
-
-  let fileUrl = "";
-  let fileName = "";
-  let fileCategory = "link";
-
-  try {
-    if (type === "link") {
-      fileUrl = document.getElementById("res-url").value.trim();
-      if (!fileUrl) {
-        alert("Please paste a valid URL!");
-        return;
-      }
-      fileCategory = "link";
-    } 
-    else if (type === "file") {
-      const fileInput = document.getElementById("res-file");
-      const file = fileInput.files[0];
-      
-      if (!file) {
-        alert("Please select a file to upload!");
-        return;
-      }
-
-      fileName = file.name;
-      const fileExtension = fileName.split('.').pop().toLowerCase();
-      
-      // Categorize for styling/badges
-      if (fileExtension === "stl") {
-        fileCategory = "stl";
-      } else if (["png", "jpg", "jpeg", "webp"].includes(fileExtension)) {
-        fileCategory = "image";
-      } else {
-        fileCategory = "file";
-      }
-
-      statusText.innerText = "⏳ Uploading to Firebase Storage... Please wait.";
-      
-      // Upload to Firebase Storage under a 'resources/' folder
-      const storageRef = firebase.storage().ref(`resources/${Date.now()}_${fileName}`);
-      const uploadTask = await storageRef.put(file);
-      fileUrl = await uploadTask.ref.getDownloadURL();
-      
-      statusText.innerText = "";
-    }
-
-    // Save metadata to Firestore
-    await resourcesCollection.add({
-      title: title,
-      url: fileUrl,
-      type: fileCategory,
-      fileName: fileName || title,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Reset UI Form
-    document.getElementById("res-title").value = "";
-    document.getElementById("res-url").value = "";
-    document.getElementById("res-file").value = "";
-    statusText.innerText = "";
-    alert("🎉 Resource added successfully!");
-
-  } catch (error) {
-    console.error("Error adding resource: ", error);
-    alert("Error uploading resource: " + error.message);
-    statusText.innerText = "";
-  }
-}
-
-// 3. Real-time Listener to Render Resources Grid
-resourcesCollection.orderBy("createdAt", "desc").onSnapshot((snapshot) => {
-  const container = document.getElementById("resources-list");
-  if (!container) return; // Guard clause if user isn't on the widget tab
-  
-  container.innerHTML = "";
-  
-  if (snapshot.empty) {
-    container.innerHTML = `<p style="color: #aaa; grid-column: 1/-1;">No resources added yet. Be the first to share something!</p>`;
-    return;
-  }
-
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    const card = document.createElement("div");
-    card.className = `resource-card ${data.type}-card`;
-
-    let badgeOrPreview = "";
+window.toggleResourceType = function() {
+    const type = document.getElementById("res-type").value;
+    const urlGroup = document.getElementById("url-input-group");
+    const fileGroup = document.getElementById("file-input-group");
     
-    // Render image preview if it's an image, or an STL badge if it's a 3D model
-    if (data.type === "image") {
-      badgeOrPreview = `<img src="${data.url}" alt="${data.title}" class="resource-preview-img" loading="lazy">`;
-    } else if (data.type === "stl") {
-      badgeOrPreview = `<span class="stl-badge">🧊 3D CAD MODEL (.STL)</span>`;
+    if (type === "file") {
+        urlGroup.style.display = "none";
+        fileGroup.style.display = "block";
     } else {
-      badgeOrPreview = `<span class="stl-badge" style="color:#4a90e2; background:rgba(74,144,226,0.2);">🌐 WEB LINK</span>`;
+        urlGroup.style.display = "block";
+        fileGroup.style.display = "none";
+    }
+};
+
+window.submitResource = async function() {
+    const title = document.getElementById("res-title").value.trim();
+    const type = document.getElementById("res-type").value;
+    const statusText = document.getElementById("upload-status");
+    
+    if (!title) {
+        alert("Please enter a title for the resource!");
+        return;
     }
 
-    card.innerHTML = `
-      <div>
-        ${badgeOrPreview}
-        <h4 class="resource-title">${data.title}</h4>
-        <p class="resource-meta">${data.fileName !== data.title ? data.fileName : 'External Link'}</p>
-      </div>
-      <div class="resource-actions">
-        <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="btn-link">
-          ${data.type === 'link' ? '🔗 Open Link' : '⬇️ Download / View'}
-        </a>
-        <button onclick="deleteResource('${doc.id}')" class="btn-delete" title="Delete Resource">✕</button>
-      </div>
-    `;
+    let fileUrl = "";
+    let fileName = "";
+    let fileCategory = "link";
 
-    container.appendChild(card);
-  });
-});
-
-// 4. Delete Resource Function
-async function deleteResource(docId) {
-  if (confirm("Are you sure you want to remove this resource?")) {
     try {
-      await resourcesCollection.doc(docId).delete();
+        if (type === "link") {
+            fileUrl = document.getElementById("res-url").value.trim();
+            if (!fileUrl) {
+                alert("Please paste a valid URL!");
+                return;
+            }
+            fileCategory = "link";
+        } 
+        else if (type === "file") {
+            const fileInput = document.getElementById("res-file");
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Please select a file to upload!");
+                return;
+            }
+
+            fileName = file.name;
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+            
+            if (fileExtension === "stl") {
+                fileCategory = "stl";
+            } else if (["png", "jpg", "jpeg", "webp"].includes(fileExtension)) {
+                fileCategory = "image";
+            } else {
+                fileCategory = "file";
+            }
+
+            statusText.innerText = "⏳ Uploading to Firebase Storage... Please wait.";
+            
+            const storageRef = firebase.storage().ref(`resources/${Date.now()}_${fileName}`);
+            const uploadTask = await storageRef.put(file);
+            fileUrl = await uploadTask.ref.getDownloadURL();
+            
+            statusText.innerText = "";
+        }
+
+        await resourcesCollection.add({
+            title: title,
+            url: fileUrl,
+            type: fileCategory,
+            fileName: fileName || title,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        document.getElementById("res-title").value = "";
+        document.getElementById("res-url").value = "";
+        document.getElementById("res-file").value = "";
+        statusText.innerText = "";
+        alert("🎉 Resource added successfully!");
+
     } catch (error) {
-      console.error("Error deleting resource: ", error);
-      alert("Could not delete: " + error.message);
+        console.error("Error adding resource: ", error);
+        alert("Error uploading resource: " + error.message);
+        statusText.innerText = "";
     }
-  }
+};
+
+function initializeResourceSync() {
+    resourcesCollection.orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+        const container = document.getElementById("resources-list");
+        if (!container) return;
+        
+        container.innerHTML = "";
+        
+        if (snapshot.empty) {
+            container.innerHTML = `<p style="color: var(--text-muted); grid-column: 1/-1; text-align: center; margin-top: 20px;">No resources added yet. Be the first to share something!</p>`;
+            return;
+        }
+
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const card = document.createElement("div");
+            card.className = `resource-card ${data.type}-card`;
+
+            let badgeOrPreview = "";
+            
+            if (data.type === "image") {
+                badgeOrPreview = `<img src="${data.url}" alt="${data.title}" class="resource-preview-img" loading="lazy">`;
+            } else if (data.type === "stl") {
+                badgeOrPreview = `<span class="stl-badge">🧊 3D CAD MODEL (.STL)</span>`;
+            } else {
+                badgeOrPreview = `<span class="stl-badge" style="color:var(--accent-blue); background:rgba(74,144,226,0.15);">🌐 WEB LINK</span>`;
+            }
+
+            card.innerHTML = `
+                <div>
+                    ${badgeOrPreview}
+                    <h4 class="resource-title">${escapeHTML(data.title)}</h4>
+                    <p class="resource-meta">${data.fileName !== data.title ? escapeHTML(data.fileName) : 'External Link'}</p>
+                </div>
+                <div class="resource-actions">
+                    <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="btn btn-link">
+                        ${data.type === 'link' ? '🔗 Open Link' : '⬇️ Download / View'}
+                    </a>
+                    <button onclick="deleteResource('${doc.id}')" class="btn btn-delete" title="Delete Resource">✕</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    });
 }
+
+window.deleteResource = async function(docId) {
+    if (confirm("Are you sure you want to remove this resource?")) {
+        try {
+            await resourcesCollection.doc(docId).delete();
+        } catch (error) {
+            console.error("Error deleting resource: ", error);
+            alert("Could not delete: " + error.message);
+        }
+    }
+};
