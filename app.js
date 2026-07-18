@@ -601,3 +601,159 @@ function triggerFailSafeWidth() {
 if (robotNameInput) {
     robotNameInput.addEventListener("input", triggerFailSafeWidth);
 }
+// ==========================================
+// RESOURCES WIDGET LOGIC
+// ==========================================
+
+const resourcesCollection = db.collection("resources"); // Assumes 'db' is your Firestore instance
+
+// 1. Toggle between Link and File upload inputs
+function toggleResourceType() {
+  const type = document.getElementById("res-type").value;
+  const urlGroup = document.getElementById("url-input-group");
+  const fileGroup = document.getElementById("file-input-group");
+  
+  if (type === "file") {
+    urlGroup.style.display = "none";
+    fileGroup.style.display = "block";
+  } else {
+    urlGroup.style.display = "block";
+    fileGroup.style.display = "none";
+  }
+}
+
+// 2. Handle Form Submission & Firebase Saving
+async function submitResource() {
+  const title = document.getElementById("res-title").value.trim();
+  const type = document.getElementById("res-type").value;
+  const statusText = document.getElementById("upload-status");
+  
+  if (!title) {
+    alert("Please enter a title for the resource!");
+    return;
+  }
+
+  let fileUrl = "";
+  let fileName = "";
+  let fileCategory = "link";
+
+  try {
+    if (type === "link") {
+      fileUrl = document.getElementById("res-url").value.trim();
+      if (!fileUrl) {
+        alert("Please paste a valid URL!");
+        return;
+      }
+      fileCategory = "link";
+    } 
+    else if (type === "file") {
+      const fileInput = document.getElementById("res-file");
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        alert("Please select a file to upload!");
+        return;
+      }
+
+      fileName = file.name;
+      const fileExtension = fileName.split('.').pop().toLowerCase();
+      
+      // Categorize for styling/badges
+      if (fileExtension === "stl") {
+        fileCategory = "stl";
+      } else if (["png", "jpg", "jpeg", "webp"].includes(fileExtension)) {
+        fileCategory = "image";
+      } else {
+        fileCategory = "file";
+      }
+
+      statusText.innerText = "⏳ Uploading to Firebase Storage... Please wait.";
+      
+      // Upload to Firebase Storage under a 'resources/' folder
+      const storageRef = firebase.storage().ref(`resources/${Date.now()}_${fileName}`);
+      const uploadTask = await storageRef.put(file);
+      fileUrl = await uploadTask.ref.getDownloadURL();
+      
+      statusText.innerText = "";
+    }
+
+    // Save metadata to Firestore
+    await resourcesCollection.add({
+      title: title,
+      url: fileUrl,
+      type: fileCategory,
+      fileName: fileName || title,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Reset UI Form
+    document.getElementById("res-title").value = "";
+    document.getElementById("res-url").value = "";
+    document.getElementById("res-file").value = "";
+    statusText.innerText = "";
+    alert("🎉 Resource added successfully!");
+
+  } catch (error) {
+    console.error("Error adding resource: ", error);
+    alert("Error uploading resource: " + error.message);
+    statusText.innerText = "";
+  }
+}
+
+// 3. Real-time Listener to Render Resources Grid
+resourcesCollection.orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+  const container = document.getElementById("resources-list");
+  if (!container) return; // Guard clause if user isn't on the widget tab
+  
+  container.innerHTML = "";
+  
+  if (snapshot.empty) {
+    container.innerHTML = `<p style="color: #aaa; grid-column: 1/-1;">No resources added yet. Be the first to share something!</p>`;
+    return;
+  }
+
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    const card = document.createElement("div");
+    card.className = `resource-card ${data.type}-card`;
+
+    let badgeOrPreview = "";
+    
+    // Render image preview if it's an image, or an STL badge if it's a 3D model
+    if (data.type === "image") {
+      badgeOrPreview = `<img src="${data.url}" alt="${data.title}" class="resource-preview-img" loading="lazy">`;
+    } else if (data.type === "stl") {
+      badgeOrPreview = `<span class="stl-badge">🧊 3D CAD MODEL (.STL)</span>`;
+    } else {
+      badgeOrPreview = `<span class="stl-badge" style="color:#4a90e2; background:rgba(74,144,226,0.2);">🌐 WEB LINK</span>`;
+    }
+
+    card.innerHTML = `
+      <div>
+        ${badgeOrPreview}
+        <h4 class="resource-title">${data.title}</h4>
+        <p class="resource-meta">${data.fileName !== data.title ? data.fileName : 'External Link'}</p>
+      </div>
+      <div class="resource-actions">
+        <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="btn-link">
+          ${data.type === 'link' ? '🔗 Open Link' : '⬇️ Download / View'}
+        </a>
+        <button onclick="deleteResource('${doc.id}')" class="btn-delete" title="Delete Resource">✕</button>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+});
+
+// 4. Delete Resource Function
+async function deleteResource(docId) {
+  if (confirm("Are you sure you want to remove this resource?")) {
+    try {
+      await resourcesCollection.doc(docId).delete();
+    } catch (error) {
+      console.error("Error deleting resource: ", error);
+      alert("Could not delete: " + error.message);
+    }
+  }
+}
