@@ -14,13 +14,13 @@
 
     <div id="login-container" class="auth-overlay">
         <div class="auth-card">
-            <h2>Nitro Workspace Login</h2>
-            <p class="auth-subtitle">Enter team credentials to access the system portal</p>
+            <h2>Nitro Workspace</h2>
+            <p class="auth-subtitle">Enter team credentials. New users will be automatically registered.</p>
             <div class="auth-input-group">
                 <input type="email" id="email-input" placeholder="Team Email Address" autocomplete="off">
                 <input type="password" id="password-input" placeholder="Workspace Access Password">
             </div>
-            <button id="email-auth-btn" class="btn primary-btn auth-submit">Sign In / Register</button>
+            <button id="email-auth-btn" class="btn primary-btn auth-submit">Sign In / Join Team</button>
             <div id="auth-message" class="error-text"></div>
         </div>
     </div>
@@ -84,34 +84,34 @@
                 <div class="resources-layout-wrapper">
                     <div class="resource-form-card">
                         <h3>Add New Workspace Resource</h3>
-                        <div class="form-group">
+                        <div class="resource-form-group">
                             <input type="text" id="res-title" placeholder="Resource Title (e.g., Robot Arm STL, WPILib Docs)" autocomplete="off">
                         </div>
                         
-                        <div class="form-group">
-                            <label for="res-type" class="form-label-context">Resource Type Classification:</label>
-                            <select id="res-type" class="priority-select custom-form-select" onchange="toggleResourceType()">
+                        <div class="resource-form-group">
+                            <label for="res-type" class="resource-label-context">Resource Type Classification:</label>
+                            <select id="res-type" class="resource-custom-select" onchange="toggleResourceType()">
                                 <option value="link">🌐 Web Link / URL Reference</option>
                                 <option value="file">📎 File Upload Asset (.stl, .png, .jpg)</option>
                             </select>
                         </div>
 
-                        <div id="url-input-group" class="form-group">
+                        <div id="url-input-group" class="resource-form-group">
                             <input type="url" id="res-url" placeholder="Paste absolute resource URL link reference (https://...)" autocomplete="off">
                         </div>
 
-                        <div id="file-input-group" class="form-group" style="display: none;">
-                            <div class="file-upload-zone-box">
+                        <div id="file-input-group" class="resource-form-group" style="display: none;">
+                            <div class="resource-upload-zone">
                                 <input type="file" id="res-file" accept=".stl,.png,.jpg,.jpeg,.webp">
                             </div>
-                            <small id="upload-status" class="upload-progress-text"></small>
+                            <small id="upload-status" class="resource-progress-text"></small>
                         </div>
 
-                        <button type="button" class="btn primary-btn form-submit-action-btn" onclick="submitResource()">Upload & Save Resource</button>
+                        <button type="button" class="btn primary-btn" onclick="submitResource()">Upload & Save Resource</button>
                     </div>
 
                     <div class="resources-grid-section">
-                        <h3 class="section-subheading-label">Saved Repository Elements</h3>
+                        <h3 class="resource-section-label">Saved Repository Elements</h3>
                         <div id="resources-list" class="resources-grid"></div>
                     </div>
                 </div>
