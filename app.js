@@ -1,5 +1,5 @@
 // ==========================================
-// 1. FIREBASE INITIALIZATION & COLLECTION REFERENCES
+// 1. FIREBASE SETUP & INITIAL CONFIG
 // ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyBRTH0niMDYdcbYzLeJmFYxJdr5clmlWGg",
@@ -30,7 +30,7 @@ let activeReplyTarget = null;
 let dismissedAnnouncements = new Set();
 let activeAnnouncementTimers = {};
 
-// DOM Node Target Selections
+// DOM Elements Linkage
 const loginContainer = document.getElementById("login-container");
 const appContainer = document.getElementById("app-container");
 const authMessage = document.getElementById("auth-message");
@@ -44,7 +44,6 @@ const chatSendBtn = document.getElementById("chat-send-btn");
 const pinnedDrawer = document.getElementById("pinned-messages-drawer");
 const pinnedList = document.getElementById("pinned-list");
 const announcementContainer = document.getElementById("announcement-container");
-
 const contextMenu = document.getElementById("custom-context-menu");
 const menuReplyBtn = document.getElementById("menu-reply-btn");
 const menuPinBtn = document.getElementById("menu-pin-btn");
@@ -56,7 +55,7 @@ let activeSelectedMsgId = null;
 let activeSelectedMsgData = null;
 
 // ==========================================
-// 2. AUTHENTICATION INTEGRITY ENGINE
+// 2. INTELLIGENT ROUTING & AUTHENTICATION
 // ==========================================
 auth.onAuthStateChanged((user) => {
     if (user) {
@@ -76,7 +75,30 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// MULTI-WIDGET VIEWPORT TAB ROUTER
+// Clear, robust intelligent error-handling sign-in system
+document.getElementById("email-auth-btn").addEventListener("click", () => {
+    const email = document.getElementById("email-input").value.trim();
+    const password = document.getElementById("password-input").value;
+    if (!email || !password) return;
+    
+    authMessage.innerText = "Processing workspace verification...";
+
+    auth.signInWithEmailAndPassword(email, password).catch((error) => {
+        // If user doesn't exist, route to auto-registration pipeline natively
+        if (error.code === 'auth/user-not-found') {
+            auth.createUserWithEmailAndPassword(email, password).catch(err => {
+                authMessage.innerText = err.message;
+            });
+        } else {
+            // Explicitly catches wrong passwords/account issues without hiding them
+            authMessage.innerText = error.message;
+        }
+    });
+});
+
+document.getElementById("logout-btn").addEventListener("click", () => auth.signOut());
+
+// STRICT VIEWPORT NAVIGATION TAB ROUTER
 window.switchWidget = function(targetWidget) {
     currentWidget = targetWidget;
     
@@ -98,7 +120,6 @@ window.switchWidget = function(targetWidget) {
         lastReadTimestamp = Date.now();
         localStorage.setItem(`chat_last_read_${currentUserEmail}`, lastReadTimestamp);
         chatBadge.classList.add("hidden");
-        
         setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
     } else if (targetWidget === 'resources') {
         document.getElementById("tab-resources-btn").classList.add("active");
@@ -110,22 +131,8 @@ window.togglePinsView = function() {
     pinnedDrawer.classList.toggle("hidden");
 };
 
-document.getElementById("email-auth-btn").addEventListener("click", () => {
-    const email = document.getElementById("email-input").value;
-    const password = document.getElementById("password-input").value;
-    if (!email || !password) return;
-    
-    auth.signInWithEmailAndPassword(email, password).catch(() => {
-        auth.createUserWithEmailAndPassword(email, password).catch(err => {
-            authMessage.innerText = err.message;
-        });
-    });
-});
-
-document.getElementById("logout-btn").addEventListener("click", () => auth.signOut());
-
 // ==========================================
-// 3. TO-DO SYNCHRONIZATION RUNTIME
+// 3. TO-DO WORKSPACE MANAGEMENT
 // ==========================================
 function buildTodoUI() {
     sectionsWrapper.innerHTML = "";
@@ -134,18 +141,17 @@ function buildTodoUI() {
         div.className = "category-card";
         div.innerHTML = `
             <h3>${cat}</h3>
-            <table>
-                <thead><tr><th>Task</th><th class="priority-col">Priority</th><th class="status-col">Status</th><th class="action-col"></th></tr></thead>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
                 <tbody id="tbody-${cat}"></tbody>
             </table>
-            <div class="task-creator-row">
-                <input type="text" id="new-task-${cat}" placeholder="Add a new ${cat.toLowerCase()} task..." autocomplete="off">
-                <select id="new-priority-${cat}" class="priority-select">
+            <div style="display:flex; gap:6px;">
+                <input type="text" id="new-task-${cat}" placeholder="Add ${cat.toLowerCase()} task..." style="flex-grow:1; padding:6px; background:var(--bg-input-fields); border:1px solid var(--border-subtle); color:white; border-radius:4px;" autocomplete="off">
+                <select id="new-priority-${cat}" style="padding:6px; background:var(--bg-input-fields); border:1px solid var(--border-subtle); color:white; border-radius:4px;">
                     <option value="Low">Low</option>
                     <option value="Medium" selected>Medium</option>
                     <option value="High">High</option>
                 </select>
-                <button class="btn secondary-btn" onclick="addNewTask('${cat}')">+ Add</button>
+                <button class="btn secondary-btn" style="padding:4px 10px;" onclick="addNewTask('${cat}')">+</button>
             </div>
         `;
         sectionsWrapper.appendChild(div);
@@ -153,9 +159,7 @@ function buildTodoUI() {
         setTimeout(() => {
             const inputEl = document.getElementById(`new-task-${cat}`);
             if (inputEl) {
-                inputEl.addEventListener("keypress", (e) => {
-                    if (e.key === "Enter") addNewTask(cat);
-                });
+                inputEl.addEventListener("keypress", (e) => { if (e.key === "Enter") addNewTask(cat); });
             }
         }, 0);
     });
@@ -164,90 +168,66 @@ function buildTodoUI() {
 function initializeTodoSync() {
     buildTodoUI();
     TODO_REF.onSnapshot((doc) => {
-        if (!doc.exists) return;
+        // Safe database document generation bootstrap if missing
+        if (!doc.exists) {
+            TODO_REF.set({ robotName: "", Design: [], Mechanical: [], Electrical: [], Software: [], Media: [] }, { merge: true });
+            return;
+        }
+        
         const data = doc.data();
         if (document.activeElement !== robotNameInput) {
             robotNameInput.value = data.robotName || "";
-            robotWrap.setAttribute('data-value', data.robotName || "");
-            triggerFailSafeWidth();
         }
         
         CATEGORIES.forEach(cat => {
             const tbody = document.getElementById(`tbody-${cat}`);
-            const rawRows = data[cat] || [];
-            const rows = rawRows.filter(row => row && row.id);
-            if (rows.length !== rawRows.length) {
-                TODO_REF.update({ [cat]: rows });
-            }
+            if (!tbody) return;
+            const rows = (data[cat] || []).filter(row => row && row.id);
 
-            const activeEl = document.activeElement;
-            const activeRowId = activeEl && activeEl.dataset ? activeEl.dataset.rowId : null;
-            
             tbody.innerHTML = "";
-
             if (rows.length === 0) {
-                const emptyTr = document.createElement("tr");
-                emptyTr.className = "empty-state-row";
-                emptyTr.innerHTML = `<td colspan="4"><div class="empty-tasks-banner">There are no tasks here yet</div></td>`;
-                tbody.appendChild(emptyTr);
+                tbody.innerHTML = `<tr><td style="color:var(--text-muted); padding:10px; text-align:center; font-size:0.85rem;">No active items</td></tr>`;
                 return;
             }
 
             rows.forEach((row) => {
                 const tr = document.createElement("tr");
-                if (row.completed) tr.classList.add("completed");
-                const priority = row.priority || "Medium";
                 tr.innerHTML = `
-                    <td>
-                        <input type="text" class="task-input" data-row-id="${row.id}" 
-                               value="${escapeHTML(row.task)}" placeholder="Task description..."
-                               onblur="updateTodoData('${cat}', '${row.id}', 'task', this.value)"
-                               onkeydown="if(event.key === 'Enter') this.blur()">
+                    <td style="padding:6px 0;">
+                        <input type="text" style="width:100%; background:transparent; border:none; color:white; outline:none; text-decoration:${row.completed ? 'line-through' : 'none'}; opacity:${row.completed ? 0.5 : 1}" 
+                               value="${escapeHTML(row.task)}" 
+                               onblur="updateTodoData('${cat}', '${row.id}', 'task', this.value)">
                     </td>
-                    <td class="priority-col">
-                        <select class="priority-select priority-${priority.toLowerCase()}" onchange="updateTodoData('${cat}', '${row.id}', 'priority', this.value)">
-                            <option value="Low" ${priority === "Low" ? "selected" : ""}>Low</option>
-                            <option value="Medium" ${priority === "Medium" ? "selected" : ""}>Medium</option>
-                            <option value="High" ${priority === "High" ? "selected" : ""}>High</option>
-                        </select>
+                    <td style="width:70px; text-align:right;">
+                        <span style="font-size:0.75rem; font-weight:700; color:${row.priority==='High'?'var(--accent-red)':row.priority==='Medium'?'var(--accent-gold)':'var(--accent-blue)'}">${row.priority}</span>
                     </td>
-                    <td class="status-col"><input type="checkbox" class="task-checkbox" ${row.completed ? "checked" : ""} onchange="updateTodoData('${cat}', '${row.id}', 'completed', this.checked)"></td>
-                    <td class="action-col"><button class="row-delete-btn" onclick="removeTodoRow('${cat}', '${row.id}')">×</button></td>
+                    <td style="width:30px; text-align:right;">
+                        <input type="checkbox" ${row.completed ? "checked" : ""} onchange="updateTodoData('${cat}', '${row.id}', 'completed', this.checked)">
+                    </td>
+                    <td style="width:25px; text-align:right;">
+                        <button style="background:transparent; border:none; color:var(--accent-red); cursor:pointer;" onclick="removeTodoRow('${cat}', '${row.id}')">×</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
-            
-            if (activeRowId) {
-                const restoredInput = tbody.querySelector(`input[data-row-id="${activeRowId}"]`);
-                if (restoredInput) {
-                    restoredInput.focus();
-                    restoredInput.selectionStart = restoredInput.selectionEnd = restoredInput.value.length;
-                }
-            }
         });
     });
 }
 
 robotNameInput.addEventListener("input", (e) => {
-    TODO_REF.update({ robotName: e.target.value.trim() });
-    triggerFailSafeWidth();
+    TODO_REF.set({ robotName: e.target.value.trim() }, { merge: true });
 });
 
 window.addNewTask = function(cat) {
     const inputEl = document.getElementById(`new-task-${cat}`);
-    if (!inputEl) return;
-    const taskText = inputEl.value.trim();
-    if (!taskText) return;
-
     const priorityEl = document.getElementById(`new-priority-${cat}`);
-    const priority = priorityEl ? priorityEl.value : "Medium";
+    if (!inputEl || !inputEl.value.trim()) return;
 
     const rowId = "row-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
     TODO_REF.update({ 
-        [cat]: firebase.firestore.FieldValue.arrayUnion({ id: rowId, task: taskText, completed: false, priority: priority }) 
+        [cat]: firebase.firestore.FieldValue.arrayUnion({ id: rowId, task: inputEl.value.trim(), completed: false, priority: priorityEl.value }) 
     }).then(() => {
         inputEl.value = "";
-        if (priorityEl) priorityEl.value = "Medium";
         inputEl.focus();
     });
 };
@@ -257,11 +237,9 @@ window.updateTodoData = function(cat, rowId, field, val) {
         if (!doc.exists) return;
         const list = doc.data()[cat] || [];
         const idx = list.findIndex(item => item.id === rowId);
-        if (idx !== -1) {
-            if (list[idx][field] !== val) {
-                list[idx][field] = val;
-                TODO_REF.update({ [cat]: list });
-            }
+        if (idx !== -1 && list[idx][field] !== val) {
+            list[idx][field] = val;
+            TODO_REF.update({ [cat]: list });
         }
     });
 };
@@ -270,36 +248,37 @@ window.removeTodoRow = function(cat, rowId) {
     TODO_REF.get().then(doc => {
         if (!doc.exists) return;
         const list = doc.data()[cat] || [];
-        const filtered = list.filter(item => item.id !== rowId);
-        TODO_REF.update({ [cat]: filtered });
+        TODO_REF.update({ [cat]: list.filter(item => item.id !== rowId) });
     });
 };
 
 // ==========================================
-// 4. WORKSPACE COMMUNICATIONS STREAM ENGINE
+// 4. COMMUNICATIONS CORE STREAM (CLIENT-SIDE SORT SAFEGUARD)
 // ==========================================
 function initializeChatSync() {
-    CHAT_REF.orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+    CHAT_REF.onSnapshot((snapshot) => {
         chatMessages.innerHTML = "";
         pinnedList.innerHTML = "";
-        let localHighestTimestamp = 0;
-
-        snapshot.forEach((doc) => {
-            const msg = doc.data();
-            const msgId = doc.id;
-            
-            if (msg.timestamp) {
-                const msTime = msg.timestamp.toMillis ? msg.timestamp.toMillis() : msg.timestamp;
-                if (msTime > localHighestTimestamp) localHighestTimestamp = msTime;
-            }
-
-            renderChatMessage(msgId, msg);
-            if (msg.pinned) {
-                renderPinnedMessage(msgId, msg);
-            }
+        
+        let messagesArray = [];
+        snapshot.forEach(doc => {
+            messagesArray.push({ id: doc.id, ...doc.data() });
         });
 
-        highestMessageTimestamp = localHighestTimestamp;
+        // Safe Client-Side Array Sort handles missing Firestore index crashes completely
+        messagesArray.sort((a, b) => {
+            const tA = a.timestamp ? (a.timestamp.toMillis ? a.timestamp.toMillis() : a.timestamp) : 0;
+            const tB = b.timestamp ? (b.timestamp.toMillis ? b.timestamp.toMillis() : b.timestamp) : 0;
+            return tA - tB;
+        });
+
+        messagesArray.forEach((msg) => {
+            const msTime = msg.timestamp ? (msg.timestamp.toMillis ? msg.timestamp.toMillis() : msg.timestamp) : Date.now();
+            if (msTime > highestMessageTimestamp) highestMessageTimestamp = msTime;
+            
+            renderChatMessage(msg.id, msg);
+            if (msg.pinned) renderPinnedMessage(msg.id, msg);
+        });
 
         if (currentWidget !== "chat" && highestMessageTimestamp > lastReadTimestamp) {
             chatBadge.classList.remove("hidden");
@@ -307,7 +286,6 @@ function initializeChatSync() {
             lastReadTimestamp = Date.now();
             localStorage.setItem(`chat_last_read_${currentUserEmail}`, lastReadTimestamp);
         }
-
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 }
@@ -315,76 +293,53 @@ function initializeChatSync() {
 function renderChatMessage(msgId, msg) {
     const isOutgoing = msg.sender === currentUserEmail;
     const wrapper = document.createElement("div");
-    wrapper.className = `message-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}`;
+    wrapper.style = `margin-bottom:12px; text-align:${isOutgoing?'right':'left'}`;
     
-    const reactionMap = msg.reactionsMap || {};
-    const emojiCounts = { '❤️': 0, '😊': 0, '🔥': 0, '💀': 0, '😭': 0 };
-
-    Object.keys(reactionMap).forEach(user => {
-        const chosenEmoji = reactionMap[user];
-        if (emojiCounts[chosenEmoji] !== undefined) emojiCounts[chosenEmoji]++;
-    });
-
-    let reactionsHTML = "";
-    Object.keys(emojiCounts).forEach(emoji => {
-        if (emojiCounts[emoji] > 0) {
-            const userReactedToThisOne = reactionMap[currentUserEmail] === emoji;
-            reactionsHTML += `
-                <span class="reaction-chip ${userReactedToThisOne ? 'user-reacted' : ''}" 
-                      onclick="toggleReactionDirectly('${msgId}', '${emoji}')">
-                    ${emoji} ${emojiCounts[emoji]}
-                </span>`;
-        }
-    });
-
-    let replyHTML = "";
-    if (msg.replyTo) {
-        replyHTML = `<div class="inline-reply-box"><span class="reply-sender-label">↩ ${msg.replyTo.sender.split('@')[0]}</span>${escapeHTML(msg.replyTo.text)}</div>`;
-    }
+    let replyHTML = msg.replyTo ? `<div style="font-size:0.8rem; color:var(--text-muted);">↩ Replying: "${escapeHTML(msg.replyTo.text)}"</div>` : "";
 
     wrapper.innerHTML = `
-        <div class="msg-meta">${msg.sender} ${msg.pinned ? '📌' : ''}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted);">${msg.sender.split('@')[0]} ${msg.pinned ? '📌' : ''}</div>
         ${replyHTML}
-        <div class="msg-bubble" id="bubble-${msgId}">${escapeHTML(msg.text)}</div>
-        <div class="msg-addons"><div class="reactions-row">${reactionsHTML}</div></div>
+        <div id="bubble-${msgId}" style="display:inline-block; padding:10px 14px; border-radius:8px; background:${isOutgoing?'var(--accent-red)':'var(--bg-card-interior)'}; color:white; max-width:70%; text-align:left; cursor:context-menu;">
+            ${escapeHTML(msg.text)}
+        </div>
     `;
-
     chatMessages.appendChild(wrapper);
 
-    const bubbleElement = document.getElementById(`bubble-${msgId}`);
-    bubbleElement.addEventListener("contextmenu", (e) => {
+    const bubble = document.getElementById(`bubble-${msgId}`);
+    bubble.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         openMessageMenu(msgId, msg, isOutgoing, msg.pinned, e.clientX, e.clientY);
     });
-
-    bubbleElement.addEventListener("touchstart", (e) => {
-        pressTimer = setTimeout(() => {
-            const touch = e.touches[0];
-            openMessageMenu(msgId, msg, isOutgoing, msg.pinned, touch.clientX, touch.clientY);
-        }, 600);
-    });
-    bubbleElement.addEventListener("touchend", () => clearTimeout(pressTimer));
 }
 
 function renderPinnedMessage(msgId, msg) {
     const item = document.createElement("div");
-    item.className = "comment-line";
+    item.style = "padding:6px; border-bottom:1px solid var(--border-subtle); font-size:0.85rem;";
     item.innerHTML = `📌 <strong>${msg.sender.split('@')[0]}</strong>: ${escapeHTML(msg.text)}`;
     pinnedList.appendChild(item);
 }
 
 // ==========================================
-// 5. TIMEOUT BANNER SYSTEM
+// 5. BANNER ENGINE (CLIENT-SIDE SORT SAFEGUARD)
 // ==========================================
 function initializeAnnouncementSync() {
-    ANNOUNCEMENTS_COLLECTION.orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+    ANNOUNCEMENTS_COLLECTION.onSnapshot((snapshot) => {
         Object.values(activeAnnouncementTimers).forEach(clearTimeout);
         activeAnnouncementTimers = {};
         announcementContainer.innerHTML = "";
 
-        snapshot.forEach((doc) => {
-            const id = doc.id;
-            const data = doc.data();
+        let announcementsArray = [];
+        snapshot.forEach(doc => announcementsArray.push({ id: doc.id, ...doc.data() }));
+        
+        announcementsArray.sort((a, b) => {
+            const tA = a.timestamp ? (a.timestamp.toMillis ? a.timestamp.toMillis() : a.timestamp) : 0;
+            const tB = b.timestamp ? (b.timestamp.toMillis ? b.timestamp.toMillis() : b.timestamp) : 0;
+            return tB - tA;
+        });
+
+        announcementsArray.forEach((data) => {
+            const id = data.id;
             if (dismissedAnnouncements.has(id)) return;
 
             const timestampMs = data.timestamp ? (data.timestamp.toMillis ? data.timestamp.toMillis() : data.timestamp) : Date.now();
@@ -393,63 +348,45 @@ function initializeAnnouncementSync() {
 
             if (difference < fifteenMinutes) {
                 const banner = document.createElement("div");
-                banner.className = "announcement-banner";
+                banner.style = "background:var(--accent-gold); color:black; padding:10px 20px; font-weight:600; display:flex; justify-content:between; align-items:center; border-radius:6px; margin-bottom:10px;";
                 banner.id = `banner-${id}`;
                 banner.innerHTML = `
-                    <span>📢 <strong>Announcement:</strong> ${escapeHTML(data.text)}</span>
-                    <button class="announcement-close-btn" onclick="manualDismissBanner('${id}')">&times;</button>
+                    <span style="flex-grow:1;">📢 Broadcast: ${escapeHTML(data.text)}</span>
+                    <button style="background:transparent; border:none; font-size:1.2rem; cursor:pointer;" onclick="manualDismissBanner('${id}')">&times;</button>
                 `;
                 
                 announcementContainer.appendChild(banner);
-                const remainingTime = fifteenMinutes - difference;
                 activeAnnouncementTimers[id] = setTimeout(() => {
                     const el = document.getElementById(`banner-${id}`);
                     if (el) el.remove();
-                }, remainingTime);
+                }, fifteenMinutes - difference);
             }
         });
     });
 }
 
-window.manualDismissBanner = function(announcementId) {
-    dismissedAnnouncements.add(announcementId);
-    const el = document.getElementById(`banner-${announcementId}`);
+window.manualDismissBanner = function(id) {
+    dismissedAnnouncements.add(id);
+    const el = document.getElementById(`banner-${id}`);
     if (el) el.remove();
 };
 
 // ==========================================
-// 6. CONTEXT HANDLERS
+// 6. MESSAGING OPERATIONS & UTILITIES
 // ==========================================
 function openMessageMenu(msgId, msgData, isOwner, isPinned, clientX, clientY) {
     activeSelectedMsgId = msgId;
     activeSelectedMsgData = msgData;
     contextMenu.classList.remove("hidden");
-
-    const containerRect = chatMessages.getBoundingClientRect();
-    const menuRect = contextMenu.getBoundingClientRect();
-    const menuWidth = menuRect.width || 180;
-    const menuHeight = menuRect.height || 220;
-
-    let targetLeft = clientX;
-    let targetTop = clientY;
-
-    if (targetLeft + menuWidth > containerRect.right) targetLeft = containerRect.right - menuWidth - 12;
-    if (targetLeft < containerRect.left) targetLeft = containerRect.left + 12;
-    if (targetTop + menuHeight > containerRect.bottom) targetTop = containerRect.bottom - menuHeight - 12;
-    if (targetTop < containerRect.top) targetTop = containerRect.top + 12;
-
-    contextMenu.style.left = `${targetLeft + window.scrollX}px`;
-    contextMenu.style.top = `${targetTop + window.scrollY}px`;
+    contextMenu.style.left = `${clientX + window.scrollX}px`;
+    contextMenu.style.top = `${clientY + window.scrollY}px`;
 
     menuReplyBtn.onclick = () => { setupReplyState(msgId, msgData); closeCustomMenu(); };
     menuPinBtn.onclick = () => { CHAT_REF.doc(msgId).update({ pinned: !isPinned }); closeCustomMenu(); };
 
     if (isOwner) {
         menuDeleteBtn.classList.remove("hidden");
-        menuDeleteBtn.onclick = () => {
-            if (confirm("Delete this message?")) CHAT_REF.doc(msgId).delete();
-            closeCustomMenu();
-        };
+        menuDeleteBtn.onclick = () => { if (confirm("Delete message?")) CHAT_REF.doc(msgId).delete(); closeCustomMenu(); };
     } else {
         menuDeleteBtn.classList.add("hidden");
     }
@@ -460,19 +397,13 @@ document.addEventListener("click", (e) => { if (!contextMenu.contains(e.target))
 
 window.handleMenuReaction = function(emoji) {
     if (!activeSelectedMsgId) return;
-    toggleReactionDirectly(activeSelectedMsgId, emoji);
-    closeCustomMenu();
-};
-
-window.toggleReactionDirectly = function(msgId, emoji) {
-    CHAT_REF.doc(msgId).get().then(doc => {
+    CHAT_REF.doc(activeSelectedMsgId).get().then(doc => {
         if (!doc.exists) return;
-        const data = doc.data();
-        let map = data.reactionsMap || {};
-        if (map[currentUserEmail] === emoji) { delete map[currentUserEmail]; } 
-        else { map[currentUserEmail] = emoji; }
-        CHAT_REF.doc(msgId).update({ reactionsMap: map });
+        let map = doc.data().reactionsMap || {};
+        map[currentUserEmail] = (map[currentUserEmail] === emoji) ? firebase.firestore.FieldValue.delete() : emoji;
+        CHAT_REF.doc(activeSelectedMsgId).update({ reactionsMap: map });
     });
+    closeCustomMenu();
 };
 
 function setupReplyState(msgId, msgData) {
@@ -490,58 +421,28 @@ function sendMsg() {
     chatInput.value = "";
 
     if (text.startsWith('/announce ')) {
-        const announcementContent = text.substring(10).trim();
-        if (announcementContent) {
-            ANNOUNCEMENTS_COLLECTION.add({
-                text: announcementContent,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => { cancelReplyState(); }).catch(err => console.error(err));
-        }
+        ANNOUNCEMENTS_COLLECTION.add({ text: text.substring(10).trim(), timestamp: firebase.firestore.FieldValue.serverTimestamp() });
         return; 
     }
 
-    const payload = {
-        text: text,
-        sender: currentUserEmail,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        pinned: false,
-        reactionsMap: {}
-    };
+    const payload = { text: text, sender: currentUserEmail, timestamp: firebase.firestore.FieldValue.serverTimestamp(), pinned: false, reactionsMap: {} };
     if (activeReplyTarget) payload.replyTo = activeReplyTarget;
 
-    CHAT_REF.add(payload).then(() => { cancelReplyState(); }).catch(err => console.error(err));
+    CHAT_REF.add(payload).then(() => cancelReplyState());
 }
 
 chatSendBtn.addEventListener("click", sendMsg);
 chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMsg(); });
 
-function escapeHTML(str) {
-    if (!str) return "";
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function triggerFailSafeWidth() {
-    if (robotNameInput && robotWrap) {
-        robotWrap.style.width = robotNameInput.value.length > 0 ? (robotNameInput.value.length + 1) + "ch" : "auto";
-    }
-}
-if (robotNameInput) robotNameInput.addEventListener("input", triggerFailSafeWidth);
+function escapeHTML(str) { return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
 
 // ==========================================
-// 7. PRODUCTION RESOURCES CORE LOGIC ENGINE
+// 7. MULTIMEDIA REPOSITORY RUNTIME
 // ==========================================
 window.toggleResourceType = function() {
     const type = document.getElementById("res-type").value;
-    const urlGroup = document.getElementById("url-input-group");
-    const fileGroup = document.getElementById("file-input-group");
-    
-    if (type === "file") {
-        urlGroup.style.display = "none";
-        fileGroup.style.display = "block";
-    } else {
-        urlGroup.style.display = "block";
-        fileGroup.style.display = "none";
-    }
+    document.getElementById("url-input-group").style.display = type === "file" ? "none" : "block";
+    document.getElementById("file-input-group").style.display = type === "file" ? "block" : "none";
 };
 
 window.submitResource = async function() {
@@ -549,10 +450,7 @@ window.submitResource = async function() {
     const type = document.getElementById("res-type").value;
     const statusText = document.getElementById("upload-status");
     
-    if (!title) {
-        alert("Please provide a name/title descriptor for this asset!");
-        return;
-    }
+    if (!title) return alert("Resource requires a descriptive title entry!");
 
     let fileUrl = "";
     let fileName = "";
@@ -561,39 +459,18 @@ window.submitResource = async function() {
     try {
         if (type === "link") {
             fileUrl = document.getElementById("res-url").value.trim();
-            if (!fileUrl) {
-                alert("Please add a destination URL path framework link!");
-                return;
-            }
-            fileCategory = "link";
-        } 
-        else if (type === "file") {
-            const fileInput = document.getElementById("res-file");
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                alert("Please drop or choose an active document data asset!");
-                return;
-            }
+            if (!fileUrl) return alert("Please specify absolute resource link path coordinates!");
+        } else {
+            const file = document.getElementById("res-file").files[0];
+            if (!file) return alert("Please attach a document data resource element.");
 
             fileName = file.name;
-            const fileExtension = fileName.split('.').pop().toLowerCase();
-            
-            if (fileExtension === "stl") {
-                fileCategory = "stl";
-            } else if (["png", "jpg", "jpeg", "webp"].includes(fileExtension)) {
-                fileCategory = "image";
-            } else {
-                fileCategory = "file";
-            }
+            const ext = fileName.split('.').pop().toLowerCase();
+            fileCategory = ext === "stl" ? "stl" : ["png", "jpg", "jpeg", "webp"].includes(ext) ? "image" : "file";
 
-            statusText.innerText = "⏳ Direct pipeline routing payload streaming to Firebase Storage...";
-            
-            const storageRef = firebase.storage().ref(`resources/${Date.now()}_${fileName}`);
-            const uploadTask = await storageRef.put(file);
-            fileUrl = await uploadTask.ref.getDownloadURL();
-            
-            statusText.innerText = "";
+            statusText.innerText = "⏳ Routing file asset arrays to cloud database matrices...";
+            const snapshot = await firebase.storage().ref(`resources/${Date.now()}_${fileName}`).put(file);
+            fileUrl = await snapshot.ref.getDownloadURL();
         }
 
         await resourcesCollection.add({
@@ -608,51 +485,50 @@ window.submitResource = async function() {
         document.getElementById("res-url").value = "";
         document.getElementById("res-file").value = "";
         statusText.innerText = "";
-        alert("🎉 Repository synchronization successfully validated!");
-
-    } catch (error) {
-        console.error(error);
-        alert("Pipeline error payload: " + error.message);
+        alert("Repository entry saved successfully!");
+    } catch (e) {
+        alert("Repository system pipeline error: " + e.message);
         statusText.innerText = "";
     }
 };
 
 function initializeResourceSync() {
-    resourcesCollection.orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+    resourcesCollection.onSnapshot((snapshot) => {
         const container = document.getElementById("resources-list");
         if (!container) return;
         
         container.innerHTML = "";
-        if (snapshot.empty) {
-            container.innerHTML = `<p style="color: var(--text-muted); grid-column: 1/-1; text-align: center; padding: 40px 0;">No resources added yet. Be the first to share something!</p>`;
+        let resourcesArray = [];
+        snapshot.forEach(doc => resourcesArray.push({ id: doc.id, ...doc.data() }));
+
+        // Safe Client-Side Array Sort handles missing Firestore index crashes completely
+        resourcesArray.sort((a, b) => {
+            const tA = a.createdAt ? (a.createdAt.toMillis ? a.createdAt.toMillis() : a.createdAt) : 0;
+            const tB = b.createdAt ? (b.createdAt.toMillis ? b.createdAt.toMillis() : b.createdAt) : 0;
+            return tB - tA;
+        });
+
+        if (resourcesArray.length === 0) {
+            container.innerHTML = `<p style="color:var(--text-muted); grid-column:1/-1; text-align:center; padding:20px 0;">No resources added yet.</p>`;
             return;
         }
 
-        snapshot.forEach((doc) => {
-            const data = doc.data();
+        resourcesArray.forEach((data) => {
             const card = document.createElement("div");
             card.className = `resource-card ${data.type}-card`;
 
-            let badgeOrPreview = "";
-            if (data.type === "image") {
-                badgeOrPreview = `<img src="${data.url}" alt="${data.title}" class="resource-preview-img" loading="lazy">`;
-            } else if (data.type === "stl") {
-                badgeOrPreview = `<span class="stl-badge">🧊 3D CAD MODEL (.STL)</span>`;
-            } else {
-                badgeOrPreview = `<span class="stl-badge">🌐 WEB LINK</span>`;
-            }
+            let visualAsset = data.type === "image" ? `<img src="${data.url}" class="resource-preview-img" loading="lazy">` : 
+                              data.type === "stl" ? `<span class="stl-badge">🧊 3D MODEL (.STL)</span>` : `<span class="stl-badge">🌐 REFERENCE LINK</span>`;
 
             card.innerHTML = `
                 <div>
-                    ${badgeOrPreview}
+                    ${visualAsset}
                     <h4 class="resource-title">${escapeHTML(data.title)}</h4>
-                    <p class="resource-meta">${data.fileName !== data.title ? escapeHTML(data.fileName) : 'External URL Data reference'}</p>
+                    <p class="resource-meta">${data.fileName !== data.title ? escapeHTML(data.fileName) : 'External Path'}</p>
                 </div>
                 <div class="resource-actions">
-                    <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="btn btn-link">
-                        ${data.type === 'link' ? '🔗 Open Link' : '⬇️ Download Asset'}
-                    </a>
-                    <button onclick="deleteResource('${doc.id}')" class="btn btn-delete" title="Purge Record">✕</button>
+                    <a href="${data.url}" target="_blank" rel="noopener noreferrer" class="btn btn-link">${data.type === 'link' ? '🔗 Open URL' : '⬇️ Download'}</a>
+                    <button onclick="deleteResource('${data.id}')" class="btn btn-delete">✕</button>
                 </div>
             `;
             container.appendChild(card);
@@ -660,12 +536,6 @@ function initializeResourceSync() {
     });
 }
 
-window.deleteResource = async function(docId) {
-    if (confirm("Purge asset registration record entry from cloud storage arrays?")) {
-        try {
-            await resourcesCollection.doc(docId).delete();
-        } catch (error) {
-            alert("Deletion fault: " + error.message);
-        }
-    }
+window.deleteResource = function(id) {
+    if (confirm("Permanently clear this file registry link from data stores?")) resourcesCollection.doc(id).delete();
 };
